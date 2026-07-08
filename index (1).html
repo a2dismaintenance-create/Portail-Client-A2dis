@@ -1,0 +1,1770 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>A2DIS — Portail Client</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#6E1E78">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="A2DIS">
+<link rel="apple-touch-icon" href="icon-192.png">
+<!-- Firebase compat AVANT tout code (règle iOS) -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif; background:#F7F5F2; color:#16131C; min-height:100vh; }
+
+/* ===== LOGIN ===== */
+#loginScreen { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;
+  background:linear-gradient(135deg,#16131C 0%,#6E1E78 60%,#1BA9E0 130%); }
+.loginBox { background:#fff; border-radius:16px; padding:36px 30px; width:100%; max-width:400px; box-shadow:0 20px 60px rgba(0,0,0,.4); }
+.loginLogo { text-align:center; margin-bottom:6px; }
+.loginLogo span { font-size:34px; font-weight:900; letter-spacing:2px; color:#6E1E78; }
+.loginLogo b { color:#1BA9E0; }
+.loginSub { text-align:center; color:#888; font-size:13px; margin-bottom:26px; letter-spacing:1px; text-transform:uppercase; }
+.loginBox input { width:100%; padding:14px; border:2px solid #e5e0da; border-radius:10px; font-size:16px; text-align:center;
+  letter-spacing:3px; text-transform:uppercase; outline:none; }
+.loginBox input:focus { border-color:#6E1E78; }
+.loginBox button { width:100%; margin-top:14px; padding:14px; border:none; border-radius:10px; font-size:15px; font-weight:700;
+  background:#6E1E78; color:#fff; cursor:pointer; letter-spacing:1px; }
+#loginErr { color:#D6248A; font-size:13px; text-align:center; margin-top:12px; min-height:16px; font-weight:600; }
+.loginFoot { text-align:center; font-size:11px; color:#aaa; margin-top:20px; }
+
+/* ===== APP ===== */
+#app { display:none; }
+.topbar { background:#16131C; color:#fff; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.topbar .brand { font-size:19px; font-weight:900; letter-spacing:2px; }
+.topbar .brand b { color:#1BA9E0; }
+.topbar .who { font-size:11px; color:#bbb; }
+.topbar .who strong { color:#fff; }
+.btn { border:none; border-radius:8px; padding:9px 14px; font-size:13px; font-weight:700; cursor:pointer; }
+.btnGhost { background:rgba(255,255,255,.12); color:#fff; }
+.btnViolet { background:#6E1E78; color:#fff; }
+.btnCyan { background:#1BA9E0; color:#fff; }
+.btnGrey { background:#e5e0da; color:#16131C; }
+.btnDanger { background:#D6248A; color:#fff; }
+
+/* NAV ONGLETS */
+.nav { display:flex; background:#fff; border-bottom:2px solid #e5e0da; position:sticky; top:0; z-index:50; }
+.nav button { flex:1; border:none; background:none; padding:13px 4px; font-size:13px; font-weight:800; color:#999;
+  cursor:pointer; letter-spacing:.5px; border-bottom:3px solid transparent; text-transform:uppercase; }
+.nav button.active { color:#6E1E78; border-bottom-color:#6E1E78; }
+
+.wrap { max-width:1100px; margin:0 auto; padding:16px 12px 60px; }
+.bandeau { background:#6E1E78; color:#fff; border-radius:12px; padding:14px 18px; margin-bottom:14px; }
+.bandeau h1 { font-size:16px; letter-spacing:1px; }
+.bandeau p { font-size:12px; color:#e0c7e6; margin-top:4px; }
+
+.filters { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+.filters select { flex:1; min-width:140px; padding:11px 12px; border:2px solid #e5e0da; border-radius:10px; font-size:14px; background:#fff; outline:none; }
+
+.kpis { display:flex; gap:8px; margin-bottom:18px; }
+.kpi { flex:1; min-width:0; background:#fff; border-radius:12px; padding:14px 6px; text-align:center; border-top:4px solid #ccc; box-shadow:0 2px 8px rgba(0,0,0,.05); }
+.kpi .num { font-size:22px; font-weight:900; }
+.kpi .lab { font-size:9px; text-transform:uppercase; letter-spacing:.5px; color:#888; margin-top:4px; }
+.kpiBlue { border-top-color:#1BA9E0; } .kpiBlue .num { color:#1BA9E0; }
+.kpiAmber { border-top-color:#E8A020; } .kpiAmber .num { color:#E8A020; }
+.kpiViolet { border-top-color:#6E1E78; } .kpiViolet .num { color:#6E1E78; }
+
+.section { margin-bottom:22px; }
+.secHead { display:flex; align-items:center; gap:8px; padding:10px 14px; border-radius:10px 10px 0 0; color:#fff; font-size:12px; font-weight:800; letter-spacing:.5px; text-transform:uppercase; }
+.secBlue { background:#1BA9E0; } .secAmber { background:#E8A020; } .secGreen { background:#2E9E5B; }
+.secHead .count { margin-left:auto; background:rgba(255,255,255,.25); border-radius:20px; padding:2px 10px; font-size:12px; }
+.tblWrap { background:#fff; border-radius:0 0 10px 10px; overflow-x:auto; box-shadow:0 2px 8px rgba(0,0,0,.05); }
+table { width:100%; border-collapse:collapse; font-size:13px; min-width:620px; }
+th { text-align:left; padding:9px 10px; background:#faf8f5; color:#888; font-size:10px; text-transform:uppercase; letter-spacing:.5px; border-bottom:2px solid #eee; white-space:nowrap; }
+td { padding:9px 10px; border-bottom:1px solid #f2efeb; vertical-align:top; }
+td.num { text-align:right; font-weight:700; white-space:nowrap; }
+td.ref { color:#6E1E78; font-weight:700; white-space:nowrap; }
+.empty { padding:18px; text-align:center; color:#aaa; font-size:13px; font-style:italic; }
+.badge { display:inline-block; padding:2px 8px; border-radius:12px; font-size:10px; font-weight:700; background:#f0ecf5; color:#6E1E78; white-space:nowrap; }
+.majInfo { text-align:center; font-size:11px; color:#aaa; margin-top:8px; }
+
+/* DOCUMENTS */
+.chips { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+.chip { border:2px solid #e5e0da; background:#fff; border-radius:20px; padding:7px 14px; font-size:12px; font-weight:700; color:#777; cursor:pointer; }
+.chip.on { background:#6E1E78; border-color:#6E1E78; color:#fff; }
+.chip.onCyan { background:#1BA9E0; border-color:#1BA9E0; color:#fff; }
+.docFilters select { width:100%; padding:10px 12px; border:2px solid #e5e0da; border-radius:10px; font-size:13px; background:#fff; outline:none; margin-bottom:14px; }
+.grpHead { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:#6E1E78; margin:16px 0 8px; padding-left:4px; border-left:4px solid #1BA9E0; }
+
+/* PLANNING */
+.planCard { background:#fff; border-radius:12px; padding:12px; margin-bottom:10px; box-shadow:0 2px 8px rgba(0,0,0,.05); display:flex; gap:12px; align-items:center; }
+.planCard.past { opacity:.55; }
+.planDate { width:54px; flex-shrink:0; text-align:center; background:#6E1E78; color:#fff; border-radius:10px; padding:8px 4px; }
+.planDate .d { font-size:20px; font-weight:900; line-height:1; }
+.planDate .m { font-size:10px; text-transform:uppercase; letter-spacing:1px; margin-top:3px; color:#e0c7e6; }
+.planDate .h { font-size:11px; font-weight:800; background:#1BA9E0; color:#fff; border-radius:8px; margin-top:5px; padding:2px 0; }
+
+/* STATS */
+.statRow { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.statLab { width:120px; flex-shrink:0; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.5px; color:#555; text-align:right; }
+.statBarWrap { flex:1; background:#f0ecf5; border-radius:8px; height:16px; overflow:hidden; }
+.statBar { height:100%; background:linear-gradient(90deg,#6E1E78,#1BA9E0); border-radius:8px; min-width:3px; }
+.statPct { width:58px; flex-shrink:0; font-size:12px; font-weight:900; color:#6E1E78; }
+.planBody { flex:1; min-width:0; }
+.planTitle { font-size:14px; font-weight:700; }
+.planMeta { font-size:11px; color:#999; margin-top:3px; }
+.stBadge { display:inline-block; padding:2px 9px; border-radius:12px; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.5px; }
+.stPlan { background:#e6f4fb; color:#1BA9E0; }
+.stConf { background:#e4f3ea; color:#2E9E5B; }
+.stTerm { background:#eee; color:#888; }
+.stNew { background:#fbe3f0; color:#D6248A; }
+.stUrg { background:#D6248A; color:#fff; }
+.badgeNew { display:inline-block; padding:2px 8px; border-radius:12px; font-size:9px; font-weight:900; background:#D6248A; color:#fff; letter-spacing:1px; vertical-align:middle; }
+.btnMini { border:none; border-radius:8px; padding:6px 10px; font-size:11px; font-weight:800; cursor:pointer; }
+.btnValider { background:#2E9E5B; color:#fff; }
+.btnRefuser { background:#D6248A; color:#fff; }
+.decideOk { color:#2E9E5B; font-weight:800; font-size:11px; white-space:nowrap; }
+.decideKo { color:#D6248A; font-weight:800; font-size:11px; white-space:nowrap; }
+.docCard { background:#fff; border-radius:12px; padding:14px; margin-bottom:10px; box-shadow:0 2px 8px rgba(0,0,0,.05);
+  display:flex; align-items:center; gap:12px; }
+.docIcon { width:42px; height:42px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+.docIconDevis { background:#e6f4fb; } .docIconRapport { background:#f0ecf5; }
+.docBody { flex:1; min-width:0; }
+.docTitle { font-size:14px; font-weight:700; }
+.docMeta { font-size:11px; color:#999; margin-top:2px; }
+.docActions { display:flex; gap:6px; flex-shrink:0; }
+
+/* ADMIN */
+.adminCard { background:#fff; border-radius:12px; padding:16px; margin-bottom:14px; box-shadow:0 2px 8px rgba(0,0,0,.05); border-left:4px solid #6E1E78; }
+.adminCard h3 { font-size:14px; color:#6E1E78; margin-bottom:8px; text-transform:uppercase; letter-spacing:1px; }
+.adminCard p { font-size:12px; color:#777; margin-bottom:10px; line-height:1.5; }
+.dropZone { border:2px dashed #6E1E78; border-radius:12px; padding:22px 14px; text-align:center; color:#6E1E78; font-size:14px; font-weight:600; cursor:pointer; background:#faf5fb; }
+.dropZone.over { background:#f0dff3; }
+.formRow { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+.formRow select, .formRow input[type=text] { flex:1; min-width:130px; padding:10px; border:2px solid #e5e0da; border-radius:8px; font-size:13px; outline:none; background:#fff; }
+.formRow input:focus, .formRow select:focus { border-color:#1BA9E0; }
+.codeRow { display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap; background:#faf8f5; border-radius:8px; padding:8px; }
+.codeRow input { width:130px; padding:8px; border:2px solid #e5e0da; border-radius:8px; font-size:13px; text-transform:uppercase; letter-spacing:1px; outline:none; }
+.codeRow select { flex:1; min-width:130px; padding:8px; border:2px solid #e5e0da; border-radius:8px; font-size:13px; background:#fff; outline:none; }
+#syncBanner { display:none; background:#D6248A; color:#fff; text-align:center; padding:8px; font-size:12px; font-weight:700; }
+.toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#16131C; color:#fff; padding:12px 22px; border-radius:30px; font-size:13px; font-weight:600; box-shadow:0 8px 24px rgba(0,0,0,.3); z-index:999; display:none; max-width:90%; text-align:center; }
+</style>
+</head>
+<body>
+
+<div id="syncBanner">⚠ Firebase non configuré — mode local (données visibles uniquement sur cet appareil)</div>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="loginBox">
+    <div class="loginLogo"><span>A2<b>DIS</b></span></div>
+    <div class="loginSub">Portail de suivi client</div>
+    <input type="text" id="loginCode" placeholder="CODE D'ACCÈS" autocomplete="off">
+    <button onclick="doLogin()">SE CONNECTER</button>
+    <div id="loginErr"></div>
+    <div style="text-align:center;margin-top:12px;">
+      <a href="#" onclick="toggleAdminLogin();return false;" style="font-size:12px;color:#bbb;text-decoration:none;">Accès administrateur</a>
+    </div>
+    <div id="adminLoginBox" style="display:none;margin-top:10px;">
+      <input type="email" id="adminEmail" placeholder="Email administrateur" style="text-transform:none;letter-spacing:0;text-align:left;font-size:14px;">
+      <input type="password" id="adminPass" placeholder="Mot de passe" style="margin-top:8px;text-align:left;letter-spacing:2px;font-size:14px;">
+      <button onclick="doAdminLogin()" style="background:#16131C;">CONNEXION ADMIN</button>
+    </div>
+    <div class="loginFoot">A2DIS Maintenance &amp; Contrôle — Accès réservé</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div>
+      <div class="brand">A2<b>DIS</b></div>
+      <div class="who" id="whoLabel"></div>
+    </div>
+    <button class="btn btnGhost" onclick="doLogout()">Déconnexion</button>
+  </div>
+
+  <div class="nav">
+    <button id="navDash" class="active" onclick="showTab('dash')">📊 Suivi</button>
+    <button id="navPlanning" onclick="showTab('planning')">🗓 Planning</button>
+    <button id="navDevis" onclick="showTab('devis')">📄 Devis</button>
+    <button id="navRapports" onclick="showTab('rapports')">📁 Rapports</button>
+    <button id="navAdmin" onclick="showTab('admin')" style="display:none;">⚙ Admin</button>
+  </div>
+
+  <div class="wrap">
+
+    <!-- ===== ONGLET SUIVI ===== -->
+    <div id="tab-dash">
+      <div class="bandeau">
+        <h1>◈ SUIVI DE VOS DEVIS &amp; INTERVENTIONS</h1>
+        <p>Situation en temps réel de vos demandes</p>
+      </div>
+
+      <div class="filters">
+        <select id="monthFilter" onchange="renderDashboard()"></select>
+        <select id="siteFilter" onchange="renderDashboard()"></select>
+        <select id="clientFilter" onchange="renderAll()" style="display:none;"></select>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi kpiBlue"><div class="num" id="kpiAttente">0</div><div class="lab">En attente valid.</div></div>
+        <div class="kpi kpiAmber"><div class="num" id="kpiEtude">0</div><div class="lab">Études en cours</div></div>
+        <div class="kpi kpiViolet"><div class="num" id="kpiMontant">0 €</div><div class="lab">Montant total</div></div>
+      </div>
+
+      <div class="section">
+        <div class="secHead" style="background:#6E1E78;">◈ Répartition par métier</div>
+        <div class="tblWrap" id="statsBox" style="padding:14px;min-width:0;"></div>
+      </div>
+
+      <div class="section">
+        <div class="secHead secBlue">◈ Devis en attente de validation <span class="count" id="cntBlue">0</span></div>
+        <div class="tblWrap" id="tblBlue"></div>
+      </div>
+
+      <div class="section">
+        <div class="secHead secAmber">◈ Études en cours <span class="count" id="cntAmber">0</span></div>
+        <div class="tblWrap" id="tblAmber"></div>
+      </div>
+
+      <div class="section">
+        <div class="secHead secGreen">◈ Devis validés — en attente d'intervention <span class="count" id="cntGreen">0</span></div>
+        <div class="tblWrap" id="tblGreen"></div>
+      </div>
+
+      <div class="majInfo" id="majInfo"></div>
+    </div>
+
+    <!-- ===== ONGLET PLANNING ===== -->
+    <div id="tab-planning" style="display:none;">
+      <div class="bandeau">
+        <h1>◈ PLANNING DES INTERVENTIONS</h1>
+        <p>Interventions programmées sur vos sites</p>
+      </div>
+      <div class="chips" id="chipsPlanning"></div>
+      <div class="chips" id="chipsPlanSite"></div>
+      <div id="listPlanning"></div>
+    </div>
+
+    <!-- ===== ONGLET DEVIS ===== -->
+    <div id="tab-devis" style="display:none;">
+      <div class="bandeau">
+        <h1>◈ VOS DEVIS</h1>
+        <p>Documents mis à disposition par A2DIS</p>
+      </div>
+      <div class="chips" id="chipsYearDevis"></div>
+      <div class="chips" id="chipsMetierDevis"></div>
+      <div id="listDevis"></div>
+    </div>
+
+    <!-- ===== ONGLET RAPPORTS ===== -->
+    <div id="tab-rapports" style="display:none;">
+      <div class="bandeau">
+        <h1>◈ VOS RAPPORTS D'INTERVENTION</h1>
+        <p>Rapports, VGP et comptes-rendus</p>
+      </div>
+      <div class="chips" id="chipsYearRapports"></div>
+      <div class="chips" id="chipsMetierRapports"></div>
+      <div id="listRapports"></div>
+    </div>
+
+    <!-- ===== ONGLET ADMIN ===== -->
+    <div id="tab-admin" style="display:none;">
+
+      <div class="chips" id="chipsAdmin"></div>
+
+      <div class="adminCard adminSec" id="adminSec-suivi">
+        <h3>Mettre à jour le suivi (Excel)</h3>
+        <p>Glisse ton <b>Recap_Globale.xlsx</b>. L'app lit l'onglet <b>DATA_DASH</b> et publie uniquement les colonnes client. <b>Marges et prix d'achat ne sont jamais envoyés.</b></p>
+        <div class="dropZone" id="dropZone" onclick="document.getElementById('fileInput').click()">📂 Glisser le fichier ici ou cliquer</div>
+        <input type="file" id="fileInput" accept=".xlsx,.xlsm" style="display:none;" onchange="handleFileInput(this)">
+        <p id="importInfo" style="margin-top:8px;color:#2E9E5B;font-weight:700;"></p>
+      </div>
+
+      <div class="adminCard adminSec" id="adminSec-codes" style="display:none;">
+        <h3>Identifiants clients</h3>
+        <p>Chaque identifiant est rattaché à <b>un seul client</b> : la personne connectée ne voit que les données et documents de ce client. Tu peux créer plusieurs identifiants pour un même client.</p>
+        <div id="codesList"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btnCyan" onclick="addCodeRow()">➕ Ajouter un identifiant</button>
+          <button class="btn btnViolet" onclick="saveCodes()">💾 Enregistrer</button>
+        </div>
+        <h3 style="margin-top:22px;">Emails de notification</h3>
+        <p>Email prévenu automatiquement quand tu publies un document pour ce client (nécessite EmailJS configuré).</p>
+        <div id="emailsList"></div>
+        <button class="btn btnViolet" onclick="saveEmails()">💾 Enregistrer les emails</button>
+      </div>
+
+      <div class="adminCard adminSec" id="adminSec-docs" style="display:none;">
+        <h3>Joindre un document (devis / rapport)</h3>
+        <div class="formRow">
+          <select id="docClient"></select>
+          <select id="docType">
+            <option value="devis">📄 Devis</option>
+            <option value="rapport">📁 Rapport</option>
+          </select>
+        </div>
+        <div class="formRow">
+          <select id="docAnnee"></select>
+          <select id="docNature">
+            <option value="VGP">VGP</option>
+            <option value="Dépannage">Dépannage</option>
+            <option value="Travaux">Travaux</option>
+          </select>
+          <select id="docMetier"></select>
+        </div>
+        <div class="formRow">
+          <input type="text" id="docTitre" placeholder="Titre (ex : Devis remise en état Porte 91)">
+          <input type="text" id="docNum" placeholder="N° (ex : #6562)" style="max-width:120px;">
+        </div>
+        <div class="dropZone" onclick="document.getElementById('docFile').click()" id="docZone">📎 Choisir le fichier (PDF, image…)</div>
+        <input type="file" id="docFile" accept=".pdf,image/*" style="display:none;" onchange="handleDocFile(this)">
+        <p id="docInfo" style="margin-top:8px;color:#777;font-size:12px;"></p>
+        <button class="btn btnViolet" style="margin-top:8px;" onclick="publishDoc()">📤 Publier le document</button>
+        <div id="adminDocsList" style="margin-top:14px;"></div>
+      </div>
+
+      <div class="adminCard adminSec" id="adminSec-planning" style="display:none;">
+        <h3>Planning des interventions</h3>
+        <div class="formRow">
+          <select id="planClient"></select>
+          <select id="planMetier"></select>
+        </div>
+        <div class="formRow">
+          <input type="date" id="planDate" style="flex:1;min-width:130px;padding:10px;border:2px solid #e5e0da;border-radius:8px;font-size:13px;background:#fff;outline:none;">
+          <input type="text" id="planHeure" placeholder="Heure (ex : 08h00)" style="max-width:140px;">
+        </div>
+        <div class="formRow">
+          <input type="text" id="planSite" placeholder="Site (ex : LE MESNIL AMELOT)">
+        </div>
+        <div class="formRow">
+          <input type="text" id="planDesc" placeholder="Intervention (ex : VGP ponts niveleurs)">
+          <select id="planStatut" style="max-width:130px;">
+            <option value="Planifié">Planifié</option>
+            <option value="Confirmé">Confirmé</option>
+            <option value="Terminé">Terminé</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btnViolet" id="btnPlanSubmit" onclick="addPlanning()">🗓 Ajouter au planning</button>
+          <button class="btn btnGrey" id="btnPlanCancel" style="display:none;" onclick="cancelEditPlanning()">Annuler la modification</button>
+        </div>
+        <div class="formRow" style="margin-top:16px;">
+          <select id="adminPlanClient" onchange="renderAdminPlanning()"></select>
+        </div>
+        <div class="chips" id="chipsAdminPlan"></div>
+        <div id="adminPlanningList"></div>
+      </div>
+
+      <div class="adminCard adminSec" id="adminSec-demandes" style="display:none;">
+        <h3>Demandes d'intervention reçues</h3>
+        <p>Demandes déposées par vos clients via le bouton ➕. Le bouton ↻ change le statut (Nouvelle → Prise en compte → Traitée).</p>
+        <div id="adminDemandesList"></div>
+      </div>
+
+      <div class="adminCard adminSec" id="adminSec-annees" style="display:none;">
+        <h3>Années disponibles</h3>
+        <p>Années proposées dans les onglets Devis et Rapports.</p>
+        <div class="chips" id="adminYearsList"></div>
+        <div class="codeRow" style="background:none;padding:0;">
+          <input type="text" id="newYearInput" placeholder="2029" style="letter-spacing:1px;">
+          <button class="btn btnCyan" onclick="addYear()">➕ Ajouter l'année</button>
+        </div>
+      </div>
+
+      <div class="adminCard adminSec" id="adminSec-code" style="display:none;">
+        <h3>Code administrateur</h3>
+        <div class="codeRow" style="background:none;padding:0;">
+          <input type="text" id="adminCodeInput" placeholder="CODE ADMIN">
+          <button class="btn btnCyan" onclick="saveAdminCode()">Modifier</button>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- BOUTON FLOTTANT DEMANDE (clients) -->
+<div id="fabDemande" onclick="openDemande()" style="display:none;position:fixed;bottom:22px;right:18px;width:58px;height:58px;border-radius:50%;background:#D6248A;color:#fff;font-size:26px;font-weight:900;text-align:center;line-height:58px;box-shadow:0 8px 24px rgba(214,36,138,.45);cursor:pointer;z-index:100;">＋</div>
+
+<!-- MODAL DEMANDE D'INTERVENTION -->
+<div id="demandeModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(22,19,28,.75);z-index:200;padding:16px;overflow-y:auto;">
+  <div style="background:#fff;border-radius:16px;max-width:440px;margin:30px auto;padding:22px;">
+    <h3 style="color:#6E1E78;font-size:15px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">➕ Demande d'intervention</h3>
+    <p style="font-size:12px;color:#999;margin-bottom:14px;">Votre demande est transmise immédiatement à A2DIS</p>
+    <div class="formRow"><input type="text" id="demSite" placeholder="Site concerné"></div>
+    <div class="formRow">
+      <select id="demUrgence">
+        <option value="Normale">Urgence : Normale</option>
+        <option value="Urgente">Urgence : URGENTE 🔴</option>
+      </select>
+    </div>
+    <div class="formRow"><textarea id="demDesc" placeholder="Décrivez le besoin (équipement, panne, localisation…)" style="flex:1;min-height:90px;padding:10px;border:2px solid #e5e0da;border-radius:8px;font-size:13px;font-family:inherit;outline:none;resize:vertical;"></textarea></div>
+    <div class="dropZone" id="demPhotoZone" onclick="document.getElementById('demPhoto').click()" style="padding:14px;">📷 Ajouter une photo (optionnel)</div>
+    <input type="file" id="demPhoto" accept="image/*" style="display:none;" onchange="handleDemandePhoto(this)">
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="btn btnPink" style="flex:1;padding:13px;" onclick="sendDemande()">📤 Envoyer la demande</button>
+      <button class="btn btnGrey" style="padding:13px;" onclick="closeDemande()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   CONFIGURATION FIREBASE — à remplacer par ta config
+   Tant que apiKey commence par "VOTRE", l'app tourne en mode local.
+===================================================================== */
+var FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAvxLpY9LX-fmS3wJ7biQTtxOcS5KYOxbE",
+  authDomain: "portail-a2dis.firebaseapp.com",
+  databaseURL: "https://portail-a2dis-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "portail-a2dis",
+  storageBucket: "portail-a2dis.firebasestorage.app",
+  messagingSenderId: "636478834368",
+  appId: "1:636478834368:web:00b2c8e706eb5aac5a0f25"
+};
+var DB_PATH = "portailClient";
+var DEFAULT_ADMIN_CODE = "A2DIS2026";
+var MAX_DOC_MB = 4;
+
+/* =====================================================================
+   CONFIGURATION EMAILJS (optionnel) — https://www.emailjs.com
+   Template avec variables : {{subject}}, {{message}}, {{to_email}}
+   Tant que publicKey commence par "VOTRE", aucun email n'est envoyé.
+===================================================================== */
+var EMAILJS_CONFIG = {
+  publicKey: "VOTRE_PUBLIC_KEY",
+  serviceId: "VOTRE_SERVICE_ID",
+  templateId: "VOTRE_TEMPLATE_ID"
+};
+var ADMIN_EMAIL = "VOTRE_EMAIL@a2dis.fr";
+
+/* ===== DONNÉES INITIALES (Recap_Globale V31 — DATA_DASH) ===== */
+var INITIAL_DATA = [{"mois": "mai-26", "client": "SED", "site": "LE MESNIL AMELOT", "type_doc": "DEVIS", "prest": "Evacuation et siphon sur 5 urinoirs ", "tp": "PLOMBERIE", "st": "DEVIS EN ATTENTE VALIDATION", "ta": 1270.0, "interv": "NON VALIDE", "num": "#6559"}, {"mois": "mai-26", "client": "SED", "site": "LE MESNIL AMELOT", "type_doc": "DEVIS", "prest": "Nettoyage de 4 cellules et sanitaires", "tp": "NETTOYAGE", "st": "DEVIS EN ATTENTE VALIDATION", "ta": 5914.0, "interv": "NON VALIDE", "num": "#6693"}, {"mois": "mai-26", "client": "URBAN", "site": "NANTEUIL XXL", "type_doc": "DEVIS", "prest": "Réparation Porte 91 et 82", "tp": "PDQ", "st": "DEVIS EN ATTENTE VALIDATION", "ta": 5320.0, "interv": "NON VALIDE", "num": "#6562"}, {"mois": "mai-26", "client": "URBAN", "site": "NANTEUIL XXL", "type_doc": "DEVIS", "prest": "Remplacement vérin de lèvre", "tp": "PDQ", "st": "DEVIS EN ATTENTE VALIDATION", "ta": 1932.0, "interv": "NON VALIDE", "num": "#6567"}, {"mois": "mai-26", "client": "GLOBE EXPRESS", "site": "GENAS", "type_doc": "DEVIS", "prest": "Révision et remise en état rideaux métallique", "tp": "PDQ", "st": "DEVIS FACTURE", "ta": 6157.5, "interv": "TERMINE", "num": "#4490"}, {"mois": "mai-26", "client": "VALORREP", "site": "MARLY", "type_doc": "DEVIS", "prest": "Levée de réserve pont niveleur numéro 20 - VGP 2026", "tp": "PDQ", "st": "DEVIS VALIDE", "ta": 1820.0, "interv": "ATTENTE INTERVENTION", "num": "#6541"}, {"mois": "mai-26", "client": "GLOBE EXPRESS", "site": "ROISSY", "type_doc": "DEVIS", "prest": "VGP 2026 - 41 Equipements + Nacelle", "tp": "PDQ", "st": "DEVIS EN ATTENTE VALIDATION", "ta": 1796.0, "interv": "NON VALIDE", "num": "#6586"}, {"mois": "mai-26", "client": "SED", "site": "PETIT QUEVILLY", "type_doc": "DEVIS", "prest": "Porte Coupe Feu Ko - Devis assurance", "tp": "INCENDIE", "st": "DEVIS VALIDE", "ta": 3656.25, "interv": "ATTENTE INTERVENTION", "num": "#DC8439"}, {"mois": "mai-26", "client": "SED", "site": "MARLY", "type_doc": "CONTRAT", "prest": "VGP 2026 - 3 Equipements", "tp": "PDQ", "st": "CONTRAT FACTURE", "ta": 213.0, "interv": "TERMINE", "num": "MNT-PDQ2026-01"}, {"mois": "mai-26", "client": "SED", "site": "LE MESNIL AMELOT", "type_doc": "CONTRAT", "prest": "VGP 2026 - 302 Equipements", "tp": "PDQ", "st": "DEVIS VALIDE", "ta": 13867.0, "interv": "ATTENTE INTERVENTION", "num": "MNT-PDQ2026-02"}, {"mois": "mai-26", "client": "SED", "site": "NANTEUIL XXL", "type_doc": "CONTRAT", "prest": "VGP 2026 - 280 Equipements", "tp": "PDQ", "st": "CONTRAT FACTURE", "ta": 8790.0, "interv": "TERMINE", "num": "MNT-PDQ2026-03"}, {"mois": "mai-26", "client": "SED", "site": "LOUVRE", "type_doc": "CONTRAT", "prest": "VGP 2026 - 90 Equipements", "tp": "PDQ", "st": "CONTRAT FACTURE", "ta": 3927.0, "interv": "TERMINE", "num": "MNT-PDQ2026-04"}, {"mois": "mai-26", "client": "SED", "site": "COMPANS", "type_doc": "CONTRAT", "prest": "VGP 2026 - 53 Equipements", "tp": "PDQ", "st": "DEVIS VALIDE", "ta": 1837.0, "interv": "NON VALIDE", "num": "MNT-PDQ2026-05"}, {"mois": "avr.-26", "client": "SED", "site": "DOURGE", "type_doc": "CONTRAT", "prest": "VGP 2026 - 150 Equipements", "tp": "PDQ", "st": "CONTRAT FACTURE", "ta": 4392.0, "interv": "TERMINE", "num": "MNT-PDQ2026-06"}, {"mois": "mai-26", "client": "SED", "site": "LE MESNIL AMELOT", "type_doc": "DEVIS", "prest": "Dépollution éléctrique Batiment A Cellule ", "tp": "ELECTRICITE", "st": "DEVIS EN ATTENTE VALIDATION", "ta": 20260.0, "interv": "NON VALIDE", "num": "#6623"}, {"mois": "mai-26", "client": "SED", "site": "LE MESNIL AMELOT", "type_doc": "DEVIS", "prest": "Remise en état Batiment A Mezzanine", "tp": "ELECTRICITE", "st": "DEVIS EN ATTENTE VALIDATION", "ta": 47220.0, "interv": "NON VALIDE", "num": "#6622"}, {"mois": "mai-26", "client": "SED", "site": "COMPANS", "type_doc": "DEVIS", "prest": "Remplacement 1 gardes Corps", "tp": "METALURGIE", "st": "DEVIS VALIDE", "ta": 1622.5, "interv": "ATTENTE INTERVENTION", "num": "#6568"}, {"mois": "mai-26", "client": "SED", "site": "LE MESNIL AMELOT", "type_doc": "CONTRAT", "prest": "VGP - SSI - Type 4", "tp": "INCENDIE", "st": "CONTRAT FACTURE", "ta": 2400.0, "interv": "TERMINE", "num": "MNT-SSI2026-01"}, {"mois": "mai-26", "client": "SED", "site": "NANTEUIL XXL", "type_doc": "DEVIS", "prest": "Location Ncelle VGP", "tp": "NACELLE", "st": "DEVIS FACTURE", "ta": 695.74, "interv": "TERMINE", "num": "#6587"}, {"mois": "juin-26", "client": "SED", "site": "LE MESNIL AMELOT", "type_doc": "DEPANNAGE", "prest": "Dépannage fuite Sprinkleur", "tp": "INCENDIE", "st": "DEVIS FACTURE", "ta": 327.0, "interv": "TERMINE", "num": "#6582"}, {"mois": "juin-26", "client": "SED", "site": "LE MESNIL AMELOT", "type_doc": "DEVIS", "prest": "Remplacement 3 Gardes Corps", "tp": "METALURGIE", "st": "DEVIS VALIDE", "ta": 4867.5, "interv": "ATTENTE INTERVENTION", "num": "#6642"}, {"mois": "juin-26", "client": "EQUIPRAYONNAGE", "site": "LONGUEUIL", "type_doc": "DEVIS", "prest": "Préstation naceliste", "tp": "RACKING", "st": "DEVIS FACTURE", "ta": 690.0, "interv": "TERMINE", "num": "#6654"}, {"mois": "juin-26", "client": "BASH", "site": "LOUVRE", "type_doc": "CONTRAT", "prest": "VGP 2026 - 30 Equipements", "tp": "PDQ", "st": "DEVIS FACTURE", "ta": 1280.0, "interv": "TERMINE", "num": "#6683"}, {"mois": "juin-26", "client": "SED", "site": "DOURGE", "type_doc": "DEVIS", "prest": "Remise en état suite VGP", "tp": "PDQ", "st": "DEVIS EN ATTENTE VALIDATION", "ta": 17954.0, "interv": "NON VALIDE", "num": "#6684"}, {"mois": "juin-26", "client": "A2DIS-SED", "site": "PETIT QUEVILLY", "type_doc": "DEVIS", "prest": "Etude de mise en place exctincteur", "tp": "INCENDIE", "st": "ETUDE EN COURS", "ta": 0.0, "interv": "NON VALIDE", "num": ""}, {"mois": "juin-26", "client": "SED", "site": "LE MESNIL AMELOT", "type_doc": "DEPANNAGE", "prest": "Dépannage 10/06/26 fuite Vanne de Vidange", "tp": "INCENDIE", "st": "DEVIS FACTURE", "ta": 154.0, "interv": "TERMINE", "num": "#6715"}, {"mois": "juin-26", "client": "SED", "site": "LE MESNIL AMELOT", "type_doc": "DEVIS", "prest": "Remise en état portail N°1", "tp": "PDQ", "st": "DEVIS EN ATTENTE VALIDATION", "ta": 3468.0, "interv": "NON VALIDE", "num": "#6886"}, {"mois": "juin-26", "client": "SED", "site": "COMPANS", "type_doc": "DEVIS", "prest": "Remise en état portail d'entrée", "tp": "PDQ", "st": "DEVIS EN ATTENTE VALIDATION", "ta": 3468.0, "interv": "NON VALIDE", "num": "#6885"}, {"mois": "mai-26", "client": "SED", "site": "COMPANS", "type_doc": "DEVIS", "prest": "Remise en état Niveleur  23,22,21 et 20", "tp": "PDQ", "st": "DEVIS EN ATTENTE VALIDATION", "ta": 7356.0, "interv": "NON VALIDE", "num": "#6898"}, {"mois": "mai-26", "client": "SED", "site": "LUCE SUR LOIRE", "type_doc": "DEVIS", "prest": "Remise en état bardage- Devis Assurance", "tp": "METALURGIE", "st": "DEVIS EN ATTENTE VALIDATION", "ta": 0.0, "interv": "NON VALIDE", "num": "#6775"}, {"mois": "mai-26", "client": "SED", "site": "LUCE SUR LOIRE", "type_doc": "DEVIS", "prest": "Remise en état Barrière extérieur - Devis Assurance", "tp": "METALURGIE", "st": "DEVIS EN ATTENTE VALIDATION", "ta": 2157.8, "interv": "NON VALIDE", "num": "#6773"}, {"mois": "juin-26", "client": "GLOBE EXPRESS", "site": "GENAS", "type_doc": "DEVIS", "prest": "Préstation corrective Dépigeonnage - Rat", "tp": "SANITATION", "st": "ETUDE EN COURS", "ta": 0.0, "interv": "NON VALIDE", "num": ""}, {"mois": "juin-26", "client": "GLOBE EXPRESS", "site": "BONNEUIL", "type_doc": "DEPANNAGE", "prest": "Intervention 10.06.26 - Rideau ne ferme plus", "tp": "PDQ", "st": "DEVIS FACTURE", "ta": 288.0, "interv": "TERMINE", "num": ""}, {"mois": "juin-26", "client": "SED", "site": "PETIT QUEVILLY", "type_doc": "DEVIS", "prest": "Enseigne SED - A2DIS", "tp": "DIVERS", "st": "ETUDE EN COURS", "ta": 0.0, "interv": "NON VALIDE", "num": ""}, {"mois": "juin-26", "client": "SED", "site": "LE MESNIL AMELOT", "type_doc": "DEVIS", "prest": "Remplacement 3 Postes Hautes tensions", "tp": "ELECTRICITE", "st": "ETUDE EN COURS", "ta": 0.0, "interv": "NON VALIDE", "num": ""}, {"mois": "juin-26", "client": "A2DIS", "site": "NANTEUIL A2DIS", "type_doc": "DEVIS", "prest": "Achat Gerbeur aide Carsat", "tp": "CHARIOT", "st": "ETUDE EN COURS", "ta": 6692.0, "interv": "NON VALIDE", "num": ""}, {"mois": "mai-26", "client": "SED", "site": "LE MESNIL AMELOT", "type_doc": "DEVIS", "prest": "Devis de remise en état suite VGP", "tp": "PDQ", "st": "ETUDE EN COURS", "ta": 0.0, "interv": "NON VALIDE", "num": ""}, {"mois": "juin-26", "client": "GLOBE EXPRESS", "site": "ROISSY", "type_doc": "DEVIS", "prest": "Enlèvement encombrant", "tp": "DIVERS", "st": "DEVIS FACTURE", "ta": 250.0, "interv": "TERMINE", "num": "#6788"}, {"mois": "juin-26", "client": "SED", "site": "LE MESNIL AMELOT", "type_doc": "CONTRAT", "prest": "Contrat semestrielle vérification BAES", "tp": "ELECTRICITE", "st": "ETUDE EN COURS", "ta": 0.0, "interv": "NON VALIDE", "num": ""}, {"mois": "juin-26", "client": "SED", "site": "LOUVRE", "type_doc": "CONTRAT", "prest": "Contrat semestrielle vérification BAES", "tp": "ELECTRICITE", "st": "ETUDE EN COURS", "ta": 0.0, "interv": "NON VALIDE", "num": ""}, {"mois": "juin-26", "client": "GLOBE EXPRESS", "site": "ROISSY", "type_doc": "DEVIS", "prest": "Devis de marquage au sol ", "tp": "DIVERS", "st": "DEVIS EN ATTENTE VALIDATION", "ta": 4850.0, "interv": "NON VALIDE", "num": "#6806"}, {"mois": "juin-26", "client": "SED", "site": "LE MESNIL AMELOT", "type_doc": "DEPANNAGE", "prest": "Réparation porte de quai B5", "tp": "PDQ", "st": "DEVIS FACTURE", "ta": 234.0, "interv": "TERMINE", "num": "#6876"}, {"mois": "juin-26", "client": "SED", "site": "LE MESNIL AMELOT", "type_doc": "DEPANNAGE", "prest": "Dépannage WC", "tp": "PLOMBERIE", "st": "DEVIS FACTURE", "ta": 156.0, "interv": "TERMINE", "num": "#6876"}, {"mois": "juin-26", "client": "JPHOME", "site": "ROUEN", "type_doc": "DEVIS", "prest": "Levée de réserve - rapport du 29/04/26 Bureau Véritas", "tp": "PDQ", "st": "DEVIS VALIDE", "ta": 2096.0, "interv": "ATTENTE INTERVENTION", "num": "#6851"}, {"mois": "juin-26", "client": "BASH", "site": "LOUVRE", "type_doc": "DEVIS", "prest": "Levée de réserve suite VGP", "tp": "PDQ", "st": "DEVIS EN ATTENTE VALIDATION", "ta": 1360.0, "interv": "NON VALIDE", "num": "#6850"}, {"mois": "juin-26", "client": "SED", "site": "LE MESNIL AMELOT", "type_doc": "DEPANNAGE", "prest": "Dépannage sprinkleur batîment A", "tp": "INCENDIE", "st": "DEVIS VALIDE", "ta": 390.0, "interv": "TERMINE", "num": "#6901"}, {"mois": "juin-26", "client": "SED", "site": "COMPANS", "type_doc": "DEVIS", "prest": "Remise en état suite Rapport Q18 Bureau véritas", "tp": "ELECTRICITE", "st": "ETUDE EN COURS", "ta": 0.0, "interv": "NON VALIDE", "num": ""}, {"mois": "juin-26", "client": "SED", "site": "LE MESNIL AMELOT", "type_doc": "DEPANNAGE", "prest": "Fuite sprinkler batiment B - C", "tp": "INCENDIE", "st": "DEVIS VALIDE", "ta": 484.5, "interv": "TERMINE", "num": "#6913"}, {"mois": "juin-26", "client": "SED", "site": "MARLY", "type_doc": "DEPANNAGE", "prest": "Remise en service Quai 57", "tp": "PDQ", "st": "DEVIS VALIDE", "ta": 290.0, "interv": "TERMINE", "num": "#6914"}];
+
+var INITIAL_CODES = {
+  "SED2026": "SED",
+  "URBAN2026": "URBAN",
+  "GLOBE2026": "GLOBE EXPRESS",
+  "VALO2026": "VALORREP",
+  "BASH2026": "BASH",
+  "EQUIP2026": "EQUIPRAYONNAGE",
+  "JPHOME2026": "JPHOME",
+  "A2SED2026": "A2DIS-SED",
+  "INTERNE2026": "A2DIS"
+};
+
+var DEFAULT_YEARS = ["2026", "2027", "2028"];
+var NATURES = ["VGP", "Dépannage", "Travaux"];
+var METIERS = ["Fermeture industrielle", "Électricité", "Plomberie", "Incendie", "Marquage au sol", "Rack", "Divers"];
+
+/* ===== ÉTAT GLOBAL ===== */
+var g_years = DEFAULT_YEARS.slice();
+var g_filterYear = { devis: "", rapports: "" };
+var g_filterMetier = { devis: "", rapports: "" };
+var g_planning = {};          // { id : {client,date,heure,site,desc,metier,statut} }
+var g_filterPlanning = "avenir";  // avenir | passees | toutes
+var g_filterPlanSite = "";
+var g_adminSection = "suivi";
+var g_editingPlanId = "";
+var g_adminPlanPeriod = "avenir";
+var g_validations = {};    // { clé : {client,num,decision,date} }
+var g_demandes = {};       // { id : {client,site,urgence,desc,photo,date,statut} }
+var g_clientEmails = {};   // { nomClient : email }
+var g_loginCode = "";
+var g_listenersOn = false;
+var g_demPhoto = "";
+var g_db = null;
+var g_useFirebase = false;
+var g_data = INITIAL_DATA.slice();
+var g_codes = INITIAL_CODES;
+var g_adminCode = DEFAULT_ADMIN_CODE;
+var g_updatedAt = "";
+var g_docsMeta = {};       // { id : {client,type,titre,num,date,name,size} }
+var g_isAdmin = false;
+var g_client = "";
+var g_loaded = false;
+var g_pendingFile = null;  // {name, base64, size}
+
+/* ===== INIT ===== */
+function initApp() {
+  if (FIREBASE_CONFIG.apiKey.indexOf("VOTRE") !== 0) {
+    try {
+      firebase.initializeApp(FIREBASE_CONFIG);
+      g_db = firebase.database();
+      g_useFirebase = true;
+    } catch (e) { g_useFirebase = false; }
+  }
+  if (EMAILJS_CONFIG.publicKey.indexOf("VOTRE") !== 0 && window.emailjs) {
+    try { emailjs.init(EMAILJS_CONFIG.publicKey); } catch (e) {}
+  }
+  if ("serviceWorker" in navigator) {
+    try { navigator.serviceWorker.register("sw.js"); } catch (e) {}
+  }
+  if (!g_useFirebase) {
+    document.getElementById("syncBanner").style.display = "block";
+    loadLocal();
+    g_loaded = true;
+    autoLoginFromURL();
+  } else {
+    firebase.auth().onAuthStateChanged(function (u) {
+      if (u && !g_listenersOn) { g_listenersOn = true; attachListeners(); }
+    });
+    firebase.auth().signInAnonymously().catch(function (e) {
+      // Auth anonyme non activée ou indisponible : on tente en direct (règles ouvertes)
+      if (!g_listenersOn) { g_listenersOn = true; attachListeners(); }
+    });
+  }
+}
+
+function attachListeners() {
+  g_db.ref(DB_PATH + "/main").on("value", function (snap) {
+    var v = snap.val();
+    if (v) {
+      g_data = v.data || INITIAL_DATA.slice();
+      g_codes = v.codes || INITIAL_CODES;
+      g_adminCode = v.adminCode || DEFAULT_ADMIN_CODE;
+      g_updatedAt = v.updatedAt || "";
+      g_years = v.years || DEFAULT_YEARS.slice();
+      g_clientEmails = v.clientEmails || {};
+    }
+    var first = !g_loaded;
+    g_loaded = true;
+    if (first) autoLoginFromURL();
+    if (document.getElementById("app").style.display === "block") renderAll();
+  });
+  g_db.ref(DB_PATH + "/docsMeta").on("value", function (snap) {
+    g_docsMeta = snap.val() || {};
+    if (document.getElementById("app").style.display === "block") { renderDocs(); if (g_isAdmin) renderAdminDocs(); }
+  });
+  g_db.ref(DB_PATH + "/planning").on("value", function (snap) {
+    g_planning = snap.val() || {};
+    if (document.getElementById("app").style.display === "block") { renderPlanning(); if (g_isAdmin) renderAdminPlanning(); }
+  });
+  g_db.ref(DB_PATH + "/validations").on("value", function (snap) {
+    g_validations = snap.val() || {};
+    if (document.getElementById("app").style.display === "block") renderDashboard();
+  });
+  g_db.ref(DB_PATH + "/demandes").on("value", function (snap) {
+    g_demandes = snap.val() || {};
+    if (document.getElementById("app").style.display === "block") {
+      renderPlanning();
+      if (g_isAdmin) { renderAdminChips(); renderAdminDemandes(); }
+    }
+  });
+}
+
+function loadLocal() {
+  try {
+    var raw = localStorage.getItem("a2dis_portail_v2");
+    if (raw) {
+      var v = JSON.parse(raw);
+      g_data = v.data || g_data;
+      g_codes = v.codes || g_codes;
+      g_adminCode = v.adminCode || g_adminCode;
+      g_updatedAt = v.updatedAt || "";
+      g_docsMeta = v.docsMeta || {};
+      g_years = v.years || g_years;
+      g_planning = v.planning || {};
+      g_validations = v.validations || {};
+      g_demandes = v.demandes || {};
+      g_clientEmails = v.clientEmails || {};
+    }
+  } catch (e) {}
+}
+
+function persistMain() {
+  var payload = { data: g_data, codes: g_codes, adminCode: g_adminCode, updatedAt: g_updatedAt, years: g_years, clientEmails: g_clientEmails };
+  if (g_useFirebase) {
+    g_db.ref(DB_PATH + "/main").set(payload, function (err) { if (err) showToast("❌ Erreur de synchronisation (droits ?)"); });
+  }
+  persistLocal();
+}
+
+function persistLocal() {
+  try {
+    localStorage.setItem("a2dis_portail_v2", JSON.stringify({
+      data: g_data, codes: g_codes, adminCode: g_adminCode, updatedAt: g_updatedAt, docsMeta: g_docsMeta,
+      years: g_years, planning: g_planning, validations: g_validations, demandes: g_demandes, clientEmails: g_clientEmails
+    }));
+  } catch (e) {}
+}
+
+/* ===== LOGIN ===== */
+function autoLoginFromURL() {
+  var m = window.location.search.match(/[?&]acces=([^&]+)/);
+  if (m) {
+    document.getElementById("loginCode").value = decodeURIComponent(m[1]);
+    doLogin();
+  }
+}
+
+function toggleAdminLogin() {
+  var b = document.getElementById("adminLoginBox");
+  b.style.display = (b.style.display === "none") ? "block" : "none";
+}
+
+function doAdminLogin() {
+  var email = document.getElementById("adminEmail").value.replace(/\s/g, "");
+  var pass = document.getElementById("adminPass").value;
+  if (!email || !pass) { document.getElementById("loginErr").textContent = "Email et mot de passe requis"; return; }
+  if (!g_useFirebase) { document.getElementById("loginErr").textContent = "Firebase non configuré — utilise le code admin"; return; }
+  firebase.auth().signInWithEmailAndPassword(email, pass).then(function () {
+    g_isAdmin = true; g_client = ""; g_loginCode = "ADMIN";
+    enterApp();
+  }).catch(function (e) {
+    document.getElementById("loginErr").textContent = "Identifiants administrateur invalides";
+  });
+}
+
+function doLogin() {
+  var code = document.getElementById("loginCode").value.replace(/\s/g, "").toUpperCase();
+  if (!code) return;
+  if (code === String(g_adminCode).toUpperCase()) {
+    g_isAdmin = true; g_client = ""; g_loginCode = "ADMIN";
+    enterApp();
+    return;
+  }
+  var found = "";
+  for (var c in g_codes) {
+    if (g_codes.hasOwnProperty(c) && c.toUpperCase() === code) { found = g_codes[c]; break; }
+  }
+  if (found) { g_isAdmin = false; g_client = found; g_loginCode = code; enterApp(); }
+  else document.getElementById("loginErr").textContent = "Code d'accès invalide";
+}
+
+function enterApp() {
+  document.getElementById("loginScreen").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  document.getElementById("loginErr").textContent = "";
+  document.getElementById("navAdmin").style.display = g_isAdmin ? "block" : "none";
+  document.getElementById("clientFilter").style.display = g_isAdmin ? "block" : "none";
+  document.getElementById("whoLabel").innerHTML = g_isAdmin
+    ? "Mode <strong>Administrateur</strong>"
+    : "Espace client — <strong>" + esc(g_client) + "</strong>";
+  document.getElementById("fabDemande").style.display = g_isAdmin ? "none" : "block";
+  showTab("dash");
+  renderAll();
+  if (g_isAdmin) {
+    document.getElementById("adminCodeInput").value = g_adminCode;
+    renderCodes();
+    fillDocClientSelect();
+    renderAdminDocs();
+    fillPlanningSelects();
+    renderAdminPlanning();
+    renderAdminDemandes();
+  }
+}
+
+function doLogout() {
+  if (g_useFirebase && g_isAdmin) {
+    try { firebase.auth().signOut().then(function () { firebase.auth().signInAnonymously().catch(function () {}); }); } catch (e) {}
+  }
+  g_isAdmin = false; g_client = ""; g_loginCode = "";
+  document.getElementById("fabDemande").style.display = "none";
+  document.getElementById("demandeModal").style.display = "none";
+  document.getElementById("app").style.display = "none";
+  document.getElementById("loginScreen").style.display = "flex";
+  document.getElementById("loginCode").value = "";
+  if (window.history && window.history.replaceState) window.history.replaceState(null, "", window.location.pathname);
+}
+
+/* ===== NAV ===== */
+function showTab(name) {
+  var tabs = ["dash", "planning", "devis", "rapports", "admin"];
+  var navIds = { dash: "navDash", planning: "navPlanning", devis: "navDevis", rapports: "navRapports", admin: "navAdmin" };
+  for (var i = 0; i < tabs.length; i++) {
+    document.getElementById("tab-" + tabs[i]).style.display = (tabs[i] === name) ? "block" : "none";
+    document.getElementById(navIds[tabs[i]]).className = (tabs[i] === name) ? "active" : "";
+  }
+  if (name === "admin") renderAdminChips();
+}
+
+var ADMIN_SECTIONS = [
+  ["suivi", "📊 Suivi"], ["demandes", "📥 Demandes"], ["codes", "🔑 Identifiants"], ["docs", "📄 Documents"],
+  ["planning", "🗓 Planning"], ["annees", "📅 Années"], ["code", "⚙ Code"]
+];
+
+function countNewDemandes() {
+  var n = 0;
+  for (var id in g_demandes) {
+    if (g_demandes.hasOwnProperty(id) && (g_demandes[id].statut || "Nouvelle") === "Nouvelle") n++;
+  }
+  return n;
+}
+
+function renderAdminChips() {
+  var h = "";
+  var nNew = countNewDemandes();
+  for (var i = 0; i < ADMIN_SECTIONS.length; i++) {
+    var lab = ADMIN_SECTIONS[i][1];
+    if (ADMIN_SECTIONS[i][0] === "demandes" && nNew > 0) lab += " (" + nNew + ")";
+    h += '<span class="chip' + (g_adminSection === ADMIN_SECTIONS[i][0] ? " on" : "") +
+      '" onclick="showAdminSection(\'' + ADMIN_SECTIONS[i][0] + '\')"' +
+      (ADMIN_SECTIONS[i][0] === "demandes" && nNew > 0 ? ' style="border-color:#D6248A;color:' + (g_adminSection === "demandes" ? '#fff' : '#D6248A') + ';"' : '') +
+      '>' + lab + '</span>';
+  }
+  document.getElementById("chipsAdmin").innerHTML = h;
+  for (var j = 0; j < ADMIN_SECTIONS.length; j++) {
+    var el = document.getElementById("adminSec-" + ADMIN_SECTIONS[j][0]);
+    if (el) el.style.display = (ADMIN_SECTIONS[j][0] === g_adminSection) ? "block" : "none";
+  }
+}
+
+function showAdminSection(name) {
+  g_adminSection = name;
+  renderAdminChips();
+}
+
+function renderAll() {
+  buildFilters();
+  renderDashboard();
+  renderDocs();
+  renderPlanning();
+  if (g_isAdmin) { renderCodes(); fillDocClientSelect(); renderAdminDocs(); fillPlanningSelects(); renderAdminPlanning(); }
+}
+
+/* ===== IMPORT EXCEL ===== */
+function handleFileInput(input) {
+  if (input.files && input.files[0]) parseExcel(input.files[0]);
+  input.value = "";
+}
+
+function setupDropZone() {
+  var dz = document.getElementById("dropZone");
+  dz.addEventListener("dragover", function (e) { e.preventDefault(); dz.className = "dropZone over"; });
+  dz.addEventListener("dragleave", function () { dz.className = "dropZone"; });
+  dz.addEventListener("drop", function (e) {
+    e.preventDefault(); dz.className = "dropZone";
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) parseExcel(e.dataTransfer.files[0]);
+  });
+}
+
+function excelSerialToMonth(n) {
+  var d = new Date(Math.round((n - 25569) * 86400 * 1000));
+  var mois = ["janv", "févr", "mars", "avr", "mai", "juin", "juil", "août", "sept", "oct", "nov", "déc"];
+  return mois[d.getUTCMonth()] + "-" + String(d.getUTCFullYear()).slice(2);
+}
+
+function normMonth(v) {
+  if (v === null || v === undefined || v === "") return "";
+  if (typeof v === "number") return excelSerialToMonth(v);
+  return String(v);
+}
+
+function parseExcel(file) {
+  var reader = new FileReader();
+  reader.onload = function (e) {
+    try {
+      var wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+      var sheetName = "";
+      for (var i = 0; i < wb.SheetNames.length; i++) {
+        if (wb.SheetNames[i].toUpperCase().indexOf("DATA_DASH") !== -1) { sheetName = wb.SheetNames[i]; break; }
+      }
+      if (!sheetName) { showToast("❌ Onglet DATA_DASH introuvable"); return; }
+      var rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: "" });
+      var out = [];
+      for (var r = 0; r < rows.length; r++) {
+        var row = rows[r];
+        if (!row.client) continue;
+        out.push({
+          mois: normMonth(row.mois_crea),
+          client: String(row.client),
+          site: String(row.site || ""),
+          type_doc: String(row.type_doc || ""),
+          prest: String(row.prest || row.presta_dem || ""),
+          tp: String(row.tp || ""),
+          st: String(row.st || ""),
+          ta: parseFloat(row.ta) || 0,
+          interv: String(row.intervention || ""),
+          num: String(row.num_a2dis || "")
+        });
+      }
+      if (!out.length) { showToast("❌ Aucune ligne exploitable"); return; }
+      g_data = out;
+      g_updatedAt = nowFR();
+      var clients = distinctClients();
+      for (var c = 0; c < clients.length; c++) {
+        if (!codeForClient(clients[c])) {
+          var gen = clients[c].replace(/[^A-Z0-9]/gi, "").toUpperCase().slice(0, 6) + String(Math.floor(100 + Math.random() * 900));
+          g_codes[gen] = clients[c];
+        }
+      }
+      persistMain();
+      document.getElementById("importInfo").textContent = "✅ " + out.length + " lignes publiées (" + clients.length + " clients) — " + g_updatedAt;
+      renderAll();
+      showToast("✅ Suivi mis à jour");
+    } catch (err) { showToast("❌ Erreur de lecture du fichier"); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/* ===== IDENTIFIANTS CLIENTS ===== */
+function distinctClients() {
+  var seen = {}, list = [];
+  for (var i = 0; i < g_data.length; i++) {
+    var c = g_data[i].client;
+    if (c && !seen[c]) { seen[c] = 1; list.push(c); }
+  }
+  for (var k in g_codes) { if (g_codes.hasOwnProperty(k) && g_codes[k] && !seen[g_codes[k]]) { seen[g_codes[k]] = 1; list.push(g_codes[k]); } }
+  list.sort();
+  return list;
+}
+
+function codeForClient(name) {
+  for (var c in g_codes) { if (g_codes.hasOwnProperty(c) && g_codes[c] === name) return c; }
+  return "";
+}
+
+function clientOptions(selected) {
+  var clients = distinctClients();
+  var h = "";
+  for (var i = 0; i < clients.length; i++) {
+    h += '<option value="' + esc(clients[i]) + '"' + (clients[i] === selected ? " selected" : "") + '>' + esc(clients[i]) + '</option>';
+  }
+  return h;
+}
+
+function renderCodes() {
+  var html = "";
+  for (var code in g_codes) {
+    if (!g_codes.hasOwnProperty(code)) continue;
+    html += buildCodeRow(code, g_codes[code]);
+  }
+  document.getElementById("codesList").innerHTML = html || '<p style="color:#aaa;font-size:13px;">Aucun identifiant — clique sur Ajouter.</p>';
+  renderEmails();
+}
+
+function buildCodeRow(code, client) {
+  return '<div class="codeRow">' +
+    '<input type="text" value="' + esc(code) + '" placeholder="CODE">' +
+    '<select>' + clientOptions(client) + '</select>' +
+    '<button class="btn btnGrey" onclick="copyLinkFromRow(this)">🔗</button>' +
+    '<button class="btn btnDanger" onclick="this.parentNode.parentNode.removeChild(this.parentNode)">✕</button>' +
+    '</div>';
+}
+
+function addCodeRow() {
+  var div = document.createElement("div");
+  div.innerHTML = buildCodeRow("", distinctClients()[0] || "");
+  document.getElementById("codesList").appendChild(div.firstChild);
+}
+
+function saveCodes() {
+  var rows = document.getElementById("codesList").getElementsByClassName("codeRow");
+  var newCodes = {};
+  for (var i = 0; i < rows.length; i++) {
+    var code = rows[i].getElementsByTagName("input")[0].value.replace(/\s/g, "").toUpperCase();
+    var client = rows[i].getElementsByTagName("select")[0].value;
+    if (!code) continue;
+    if (newCodes[code]) { showToast("❌ Code en double : " + code); return; }
+    if (code === String(g_adminCode).toUpperCase()) { showToast("❌ Code identique au code admin"); return; }
+    newCodes[code] = client;
+  }
+  g_codes = newCodes;
+  persistMain();
+  renderCodes();
+  showToast("✅ Identifiants enregistrés");
+}
+
+function copyLinkFromRow(btn) {
+  var code = btn.parentNode.getElementsByTagName("input")[0].value.replace(/\s/g, "").toUpperCase();
+  if (!code) { showToast("Saisis d'abord un code"); return; }
+  var url = window.location.origin + window.location.pathname + "?acces=" + encodeURIComponent(code);
+  var ta = document.createElement("textarea");
+  ta.value = url;
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand("copy"); showToast("🔗 Lien copié"); } catch (e) { showToast(url); }
+  document.body.removeChild(ta);
+}
+
+function saveAdminCode() {
+  var v = document.getElementById("adminCodeInput").value.replace(/\s/g, "").toUpperCase();
+  if (v.length < 4) { showToast("❌ Minimum 4 caractères"); return; }
+  g_adminCode = v;
+  persistMain();
+  showToast("✅ Code admin modifié");
+}
+
+/* ===== DASHBOARD ===== */
+function buildFilters() {
+  var seen = {}, months = [];
+  for (var i = 0; i < g_data.length; i++) {
+    var m = g_data[i].mois;
+    if (m && !seen[m]) { seen[m] = 1; months.push(m); }
+  }
+  var mf = document.getElementById("monthFilter");
+  var cur = mf.value;
+  var html = '<option value="">Tous les mois</option>';
+  for (var j = 0; j < months.length; j++) html += '<option value="' + esc(months[j]) + '">' + esc(months[j]) + '</option>';
+  mf.innerHTML = html;
+  mf.value = cur || "";
+
+  // sites (selon le client actif)
+  var cliAct = g_isAdmin ? document.getElementById("clientFilter").value : g_client;
+  var seenS = {}, sites = [];
+  for (var s = 0; s < g_data.length; s++) {
+    if (cliAct && g_data[s].client !== cliAct) continue;
+    var st = g_data[s].site;
+    if (st && !seenS[st]) { seenS[st] = 1; sites.push(st); }
+  }
+  sites.sort();
+  var sf = document.getElementById("siteFilter");
+  var curS = sf.value;
+  var sh = '<option value="">Tous les sites</option>';
+  for (var t = 0; t < sites.length; t++) sh += '<option value="' + esc(sites[t]) + '">' + esc(sites[t]) + '</option>';
+  sf.innerHTML = sh;
+  sf.value = seenS[curS] ? curS : "";
+
+  if (g_isAdmin) {
+    var cf = document.getElementById("clientFilter");
+    var curc = cf.value;
+    cf.innerHTML = '<option value="">Tous les clients</option>' + clientOptions("");
+    cf.value = curc || "";
+  }
+}
+
+function activeClient() {
+  return g_isAdmin ? document.getElementById("clientFilter").value : g_client;
+}
+
+function fmtEuro(n) {
+  var s = String(Math.round(n));
+  var out = "", cnt = 0;
+  for (var i = s.length - 1; i >= 0; i--) {
+    out = s.charAt(i) + out;
+    cnt++;
+    if (cnt % 3 === 0 && i > 0) out = " " + out;
+  }
+  return out + " €";
+}
+
+function renderDashboard() {
+  var mois = document.getElementById("monthFilter").value;
+  var site = document.getElementById("siteFilter").value;
+  var cli = activeClient();
+  var blue = [], amber = [], green = [];
+  var totalMontant = 0;
+  var tpCount = {}, tpTotal = 0;
+
+  for (var i = 0; i < g_data.length; i++) {
+    var r = g_data[i];
+    if (cli && r.client !== cli) continue;
+    if (mois && r.mois !== mois) continue;
+    if (site && r.site !== site) continue;
+    if (r.tp) { tpCount[r.tp] = (tpCount[r.tp] || 0) + 1; tpTotal++; }
+    if (r.st === "DEVIS EN ATTENTE VALIDATION") { blue.push(r); totalMontant += r.ta; }
+    else if (r.st === "ETUDE EN COURS") { amber.push(r); totalMontant += r.ta; }
+    else if (r.st === "DEVIS VALIDE" || r.st === "CONTRAT VALIDE") { green.push(r); }
+  }
+
+  renderStats(tpCount, tpTotal);
+
+  document.getElementById("kpiAttente").textContent = blue.length;
+  document.getElementById("kpiEtude").textContent = amber.length;
+  document.getElementById("kpiMontant").textContent = fmtEuro(totalMontant);
+  document.getElementById("cntBlue").textContent = blue.length;
+  document.getElementById("cntAmber").textContent = amber.length;
+  document.getElementById("cntGreen").textContent = green.length;
+
+  document.getElementById("tblBlue").innerHTML = buildTable(blue, true, true);
+  document.getElementById("tblAmber").innerHTML = buildTable(amber, false, false);
+  document.getElementById("tblGreen").innerHTML = buildTable(green, true, false);
+  document.getElementById("majInfo").textContent = g_updatedAt ? "Dernière mise à jour : " + g_updatedAt : "";
+}
+
+function renderStats(tpCount, tpTotal) {
+  var box = document.getElementById("statsBox");
+  if (!box) return;
+  if (!tpTotal) { box.innerHTML = '<div class="empty">Aucune donnée pour cette sélection</div>'; return; }
+  var arr = [];
+  for (var tp in tpCount) { if (tpCount.hasOwnProperty(tp)) arr.push([tp, tpCount[tp]]); }
+  arr.sort(function (a, b) { return b[1] - a[1]; });
+  var h = "";
+  for (var i = 0; i < arr.length; i++) {
+    var pct = Math.round(arr[i][1] * 100 / tpTotal);
+    h += '<div class="statRow">' +
+      '<div class="statLab">' + esc(arr[i][0]) + '</div>' +
+      '<div class="statBarWrap"><div class="statBar" style="width:' + pct + '%;"></div></div>' +
+      '<div class="statPct">' + pct + '% <span style="color:#aaa;font-weight:600;">(' + arr[i][1] + ')</span></div>' +
+      '</div>';
+  }
+  box.innerHTML = h;
+}
+
+function buildTable(rows, withPrice, withDecision) {
+  if (!rows.length) return '<div class="empty">Aucun élément pour cette sélection</div>';
+  var showClient = g_isAdmin && !document.getElementById("clientFilter").value;
+  var h = "<table><tr><th>Mois</th>";
+  if (showClient) h += "<th>Client</th>";
+  h += "<th>Site</th><th>Prestation demandée</th><th>Type</th>";
+  if (withPrice) h += "<th style='text-align:right;'>Tarif A2DIS</th>";
+  h += "<th>N° Devis</th>";
+  if (withDecision) h += "<th>" + (g_isAdmin ? "Réponse client" : "Votre décision") + "</th>";
+  h += "</tr>";
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    h += "<tr><td>" + esc(r.mois) + "</td>";
+    if (showClient) h += "<td>" + esc(r.client) + "</td>";
+    h += "<td>" + esc(r.site) + "</td><td>" + esc(r.prest) + "</td><td><span class='badge'>" + esc(r.tp) + "</span></td>";
+    if (withPrice) h += "<td class='num'>" + (r.ta ? fmtEuro(r.ta) : "—") + "</td>";
+    h += "<td class='ref'>" + esc(r.num) + "</td>";
+    if (withDecision) h += decisionCell(r);
+    h += "</tr>";
+  }
+  return h + "</table>";
+}
+
+/* ===== DOCUMENTS ===== */
+function fillDocClientSelect() {
+  document.getElementById("docClient").innerHTML = clientOptions("");
+  var yh = "";
+  for (var i = 0; i < g_years.length; i++) yh += '<option value="' + esc(g_years[i]) + '">' + esc(g_years[i]) + '</option>';
+  document.getElementById("docAnnee").innerHTML = yh;
+  var mh = "";
+  for (var j = 0; j < METIERS.length; j++) mh += '<option value="' + esc(METIERS[j]) + '">' + esc(METIERS[j]) + '</option>';
+  document.getElementById("docMetier").innerHTML = mh;
+  renderAdminYears();
+}
+
+function renderAdminYears() {
+  var h = "";
+  for (var i = 0; i < g_years.length; i++) h += '<span class="chip on">' + esc(g_years[i]) + '</span>';
+  document.getElementById("adminYearsList").innerHTML = h;
+}
+
+function addYear() {
+  var v = document.getElementById("newYearInput").value.replace(/\D/g, "");
+  if (v.length !== 4) { showToast("❌ Saisis une année à 4 chiffres"); return; }
+  for (var i = 0; i < g_years.length; i++) { if (g_years[i] === v) { showToast("❌ Année déjà présente"); return; } }
+  g_years.push(v);
+  g_years.sort();
+  document.getElementById("newYearInput").value = "";
+  persistMain();
+  fillDocClientSelect();
+  renderDocs();
+  showToast("✅ Année " + v + " ajoutée");
+}
+
+function setYearFilter(tab, year) {
+  g_filterYear[tab] = year;
+  renderDocs();
+}
+
+function handleDocFile(input) {
+  if (!(input.files && input.files[0])) return;
+  var file = input.files[0];
+  if (file.size > MAX_DOC_MB * 1024 * 1024) {
+    showToast("❌ Fichier trop lourd (max " + MAX_DOC_MB + " Mo)");
+    input.value = "";
+    return;
+  }
+  var reader = new FileReader();
+  reader.onload = function (e) {
+    g_pendingFile = { name: file.name, base64: e.target.result, size: file.size };
+    document.getElementById("docInfo").textContent = "📎 " + file.name + " (" + Math.round(file.size / 1024) + " Ko) — prêt à publier";
+    document.getElementById("docZone").textContent = "📎 " + file.name;
+  };
+  reader.readAsDataURL(file);
+  input.value = "";
+}
+
+function publishDoc() {
+  if (!g_pendingFile) { showToast("❌ Choisis d'abord un fichier"); return; }
+  var titre = document.getElementById("docTitre").value.replace(/^\s+|\s+$/g, "");
+  if (!titre) { showToast("❌ Donne un titre au document"); return; }
+  var id = "d" + new Date().getTime();
+  var meta = {
+    client: document.getElementById("docClient").value,
+    type: document.getElementById("docType").value,
+    annee: document.getElementById("docAnnee").value,
+    nature: document.getElementById("docNature").value,
+    metier: document.getElementById("docMetier").value,
+    titre: titre,
+    num: document.getElementById("docNum").value.replace(/^\s+|\s+$/g, ""),
+    date: nowFR(),
+    name: g_pendingFile.name,
+    size: g_pendingFile.size
+  };
+  if (g_useFirebase) {
+    g_db.ref(DB_PATH + "/docsFiles/" + id).set(g_pendingFile.base64, function (err) {
+      if (err) { showToast("❌ Erreur d'envoi du fichier"); return; }
+      g_db.ref(DB_PATH + "/docsMeta/" + id).set(meta);
+      afterPublish();
+    });
+  } else {
+    try {
+      localStorage.setItem("a2dis_doc_" + id, g_pendingFile.base64);
+      g_docsMeta[id] = meta;
+      persistLocal();
+      afterPublish();
+    } catch (e) { showToast("❌ Stockage local plein — configure Firebase"); }
+  }
+}
+
+function afterPublish() {
+  var cli = document.getElementById("docClient").value;
+  var typ = document.getElementById("docType").value;
+  var titre = document.getElementById("docTitre").value;
+  g_pendingFile = null;
+  document.getElementById("docTitre").value = "";
+  document.getElementById("docNum").value = "";
+  document.getElementById("docInfo").textContent = "";
+  document.getElementById("docZone").textContent = "📎 Choisir le fichier (PDF, image…)";
+  showToast("✅ Document publié");
+  if (g_clientEmails[cli]) {
+    sendMail(g_clientEmails[cli], "A2DIS — Nouveau document disponible sur votre portail",
+      "Bonjour,\nUn nouveau " + (typ === "devis" ? "devis" : "rapport") + " est disponible sur votre portail A2DIS : " + titre +
+      "\nConnectez-vous avec votre code d'accès : " + window.location.origin + window.location.pathname);
+  }
+  if (!g_useFirebase) { renderDocs(); renderAdminDocs(); }
+}
+
+function openDoc(id) {
+  if (!g_isAdmin && g_docsMeta[id] && !g_docsMeta[id].vu) {
+    var vu = { date: nowFR(), code: g_loginCode };
+    g_docsMeta[id].vu = vu;
+    if (g_useFirebase) g_db.ref(DB_PATH + "/docsMeta/" + id + "/vu").set(vu);
+    else persistLocal();
+    renderDocs();
+  }
+  if (g_useFirebase) {
+    showToast("⏳ Chargement du document…");
+    g_db.ref(DB_PATH + "/docsFiles/" + id).once("value", function (snap) {
+      var b64 = snap.val();
+      if (b64) openBase64(b64, g_docsMeta[id]);
+      else showToast("❌ Fichier introuvable");
+    });
+  } else {
+    var b64 = null;
+    try { b64 = localStorage.getItem("a2dis_doc_" + id); } catch (e) {}
+    if (b64) openBase64(b64, g_docsMeta[id]);
+    else showToast("❌ Fichier introuvable");
+  }
+}
+
+function openBase64(dataUrl, meta) {
+  try {
+    var parts = dataUrl.split(",");
+    var mime = parts[0].split(":")[1].split(";")[0];
+    var bin = atob(parts[1]);
+    var arr = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    var blob = new Blob([arr], { type: mime });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.target = "_blank";
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+  } catch (e) { showToast("❌ Impossible d'ouvrir le document"); }
+}
+
+function deleteDoc(id) {
+  if (!confirm("Supprimer ce document ?")) return;
+  if (g_useFirebase) {
+    g_db.ref(DB_PATH + "/docsFiles/" + id).remove();
+    g_db.ref(DB_PATH + "/docsMeta/" + id).remove();
+  } else {
+    try { localStorage.removeItem("a2dis_doc_" + id); } catch (e) {}
+    delete g_docsMeta[id];
+    persistLocal();
+    renderDocs(); renderAdminDocs();
+  }
+  showToast("🗑 Document supprimé");
+}
+
+function docsSorted() {
+  var list = [];
+  for (var id in g_docsMeta) {
+    if (g_docsMeta.hasOwnProperty(id)) { var m = g_docsMeta[id]; m._id = id; list.push(m); }
+  }
+  list.sort(function (a, b) { return a._id < b._id ? 1 : -1; });
+  return list;
+}
+
+function docCard(d) {
+  var isNew = !g_isAdmin && !d.vu;
+  var vuInfo = "";
+  if (g_isAdmin) {
+    vuInfo = d.vu ? ' · <span style="color:#2E9E5B;font-weight:700;">👁 Vu le ' + esc(d.vu.date) + '</span>'
+                  : ' · <span style="color:#D6248A;font-weight:700;">Non consulté</span>';
+  }
+  return '<div class="docCard">' +
+    '<div class="docIcon ' + (d.type === "devis" ? "docIconDevis" : "docIconRapport") + '">' + (d.type === "devis" ? "📄" : "📁") + '</div>' +
+    '<div class="docBody"><div class="docTitle">' + esc(d.titre) +
+    (d.num ? ' <span class="badge">' + esc(d.num) + '</span>' : '') +
+    (isNew ? ' <span class="badgeNew">NOUVEAU</span>' : '') + '</div>' +
+    '<div class="docMeta">' + (g_isAdmin ? esc(d.client) + " · " : "") + esc(d.metier || "Divers") + ' · ' + esc(d.date) + ' · ' + Math.round(d.size / 1024) + ' Ko' + vuInfo + '</div></div>' +
+    '<div class="docActions"><button class="btn btnCyan" onclick="openDoc(\'' + d._id + '\')">Ouvrir</button></div>' +
+    '</div>';
+}
+
+function renderYearChips(tab) {
+  var el = document.getElementById(tab === "devis" ? "chipsYearDevis" : "chipsYearRapports");
+  if (!el) return;
+  var cur = g_filterYear[tab];
+  var h = '<span class="chip' + (cur === "" ? " on" : "") + '" onclick="setYearFilter(\'' + tab + '\',\'\')">Toutes</span>';
+  for (var i = 0; i < g_years.length; i++) {
+    h += '<span class="chip' + (cur === g_years[i] ? " on" : "") + '" onclick="setYearFilter(\'' + tab + '\',\'' + esc(g_years[i]) + '\')">' + esc(g_years[i]) + '</span>';
+  }
+  el.innerHTML = h;
+}
+
+function setMetierFilter(tab, metier) {
+  g_filterMetier[tab] = metier;
+  renderDocs();
+}
+
+function renderMetierChips(tab) {
+  var el = document.getElementById(tab === "devis" ? "chipsMetierDevis" : "chipsMetierRapports");
+  if (!el) return;
+  var cur = g_filterMetier[tab];
+  var h = '<span class="chip' + (cur === "" ? " onCyan" : "") + '" onclick="setMetierFilter(\'' + tab + '\',\'\')">Tous les métiers</span>';
+  for (var i = 0; i < METIERS.length; i++) {
+    h += '<span class="chip' + (cur === METIERS[i] ? " onCyan" : "") + '" onclick="setMetierFilter(\'' + tab + '\',\'' + esc(METIERS[i]) + '\')">' + esc(METIERS[i]) + '</span>';
+  }
+  el.innerHTML = h;
+}
+
+function renderDocTab(tab) {
+  renderYearChips(tab);
+  renderMetierChips(tab);
+  var cli = activeClient();
+  var year = g_filterYear[tab];
+  var metier = g_filterMetier[tab];
+  var list = docsSorted();
+  var groups = {};
+  var count = 0;
+  for (var i = 0; i < list.length; i++) {
+    var d = list[i];
+    if (d.type !== (tab === "devis" ? "devis" : "rapport")) continue;
+    if (cli && d.client !== cli) continue;
+    if (!g_isAdmin && d.client !== g_client) continue;
+    if (year && String(d.annee || "") !== year) continue;
+    if (metier && (d.metier || "Divers") !== metier) continue;
+    var nat = d.nature || "Autres";
+    if (!groups[nat]) groups[nat] = "";
+    groups[nat] += docCard(d);
+    count++;
+  }
+  var order = NATURES.concat(["Autres"]);
+  var h = "";
+  for (var j = 0; j < order.length; j++) {
+    if (groups[order[j]]) {
+      h += '<div class="grpHead">' + esc(order[j]) + (year ? " · " + esc(year) : "") + '</div>' + groups[order[j]];
+    }
+  }
+  var el = document.getElementById(tab === "devis" ? "listDevis" : "listRapports");
+  el.innerHTML = count ? h : '<div class="empty" style="background:#fff;border-radius:12px;">Aucun document pour cette sélection</div>';
+}
+
+function renderDocs() {
+  renderDocTab("devis");
+  renderDocTab("rapports");
+}
+
+function renderAdminDocs() {
+  var list = docsSorted();
+  var h = "";
+  for (var i = 0; i < list.length; i++) {
+    var d = list[i];
+    h += '<div class="docCard">' +
+      '<div class="docIcon ' + (d.type === "devis" ? "docIconDevis" : "docIconRapport") + '">' + (d.type === "devis" ? "📄" : "📁") + '</div>' +
+      '<div class="docBody"><div class="docTitle">' + esc(d.titre) + '</div>' +
+      '<div class="docMeta">' + esc(d.client) + ' · ' + esc(d.date) + '</div></div>' +
+      '<div class="docActions">' +
+      '<button class="btn btnGrey" onclick="openDoc(\'' + d._id + '\')">👁</button>' +
+      '<button class="btn btnDanger" onclick="deleteDoc(\'' + d._id + '\')">🗑</button>' +
+      '</div></div>';
+  }
+  document.getElementById("adminDocsList").innerHTML = h;
+}
+
+/* ===== PLANNING ===== */
+var MOIS_FR = ["JANV", "FÉVR", "MARS", "AVR", "MAI", "JUIN", "JUIL", "AOÛT", "SEPT", "OCT", "NOV", "DÉC"];
+
+function fillPlanningSelects() {
+  document.getElementById("planClient").innerHTML = clientOptions("");
+  var mh = "";
+  for (var j = 0; j < METIERS.length; j++) mh += '<option value="' + esc(METIERS[j]) + '">' + esc(METIERS[j]) + '</option>';
+  document.getElementById("planMetier").innerHTML = mh;
+  var cf = document.getElementById("adminPlanClient");
+  var cur = cf.value;
+  cf.innerHTML = '<option value="">Tous les clients</option>' + clientOptions("");
+  cf.value = cur || "";
+}
+
+function normalizeHeure(v) {
+  v = String(v || "").replace(/\s/g, "");
+  if (!v) return "";
+  var m = v.match(/^(\d{1,2})(?:[hH:.,](\d{1,2})?)?$/);
+  if (!m) return v;
+  var hh = parseInt(m[1], 10);
+  if (isNaN(hh) || hh > 23) return v;
+  var mm = m[2] ? parseInt(m[2], 10) : 0;
+  if (isNaN(mm) || mm > 59) mm = 0;
+  function p(n) { return n < 10 ? "0" + n : String(n); }
+  return p(hh) + "h" + p(mm);
+}
+
+function addPlanning() {
+  var date = document.getElementById("planDate").value;
+  var desc = document.getElementById("planDesc").value.replace(/^\s+|\s+$/g, "");
+  if (!date) { showToast("❌ Choisis une date"); return; }
+  if (!desc) { showToast("❌ Décris l'intervention"); return; }
+  var id = g_editingPlanId || ("p" + new Date().getTime());
+  var entry = {
+    client: document.getElementById("planClient").value,
+    date: date,
+    heure: normalizeHeure(document.getElementById("planHeure").value),
+    site: document.getElementById("planSite").value.replace(/^\s+|\s+$/g, ""),
+    desc: desc,
+    metier: document.getElementById("planMetier").value,
+    statut: document.getElementById("planStatut").value
+  };
+  var wasEditing = !!g_editingPlanId;
+  savePlanningEntry(id, entry);
+  cancelEditPlanning();
+  showToast(wasEditing ? "✅ Intervention modifiée" : "✅ Intervention ajoutée au planning");
+}
+
+function editPlanning(id) {
+  var e = g_planning[id];
+  if (!e) return;
+  g_editingPlanId = id;
+  document.getElementById("planClient").value = e.client;
+  document.getElementById("planDate").value = e.date;
+  document.getElementById("planHeure").value = e.heure || "";
+  document.getElementById("planSite").value = e.site || "";
+  document.getElementById("planDesc").value = e.desc || "";
+  document.getElementById("planMetier").value = e.metier || METIERS[0];
+  document.getElementById("planStatut").value = e.statut || "Planifié";
+  document.getElementById("btnPlanSubmit").innerHTML = "💾 Enregistrer la modification";
+  document.getElementById("btnPlanCancel").style.display = "inline-block";
+  document.getElementById("planDesc").focus();
+}
+
+function cancelEditPlanning() {
+  g_editingPlanId = "";
+  document.getElementById("planDesc").value = "";
+  document.getElementById("planHeure").value = "";
+  document.getElementById("btnPlanSubmit").innerHTML = "🗓 Ajouter au planning";
+  document.getElementById("btnPlanCancel").style.display = "none";
+}
+
+function savePlanningEntry(id, entry) {
+  g_planning[id] = entry;
+  if (g_useFirebase) {
+    g_db.ref(DB_PATH + "/planning/" + id).set(entry, function (err) { if (err) showToast("❌ Erreur de synchronisation"); });
+  } else {
+    persistLocal();
+    renderPlanning();
+    renderAdminPlanning();
+  }
+}
+
+function deletePlanning(id) {
+  if (!confirm("Supprimer cette intervention du planning ?")) return;
+  delete g_planning[id];
+  if (g_useFirebase) g_db.ref(DB_PATH + "/planning/" + id).remove();
+  else { persistLocal(); renderPlanning(); renderAdminPlanning(); }
+  showToast("🗑 Intervention supprimée");
+}
+
+function cyclePlanningStatut(id) {
+  var e = g_planning[id];
+  if (!e) return;
+  var order = ["Planifié", "Confirmé", "Terminé"];
+  var idx = 0;
+  for (var i = 0; i < order.length; i++) { if (order[i] === e.statut) { idx = i; break; } }
+  e.statut = order[(idx + 1) % order.length];
+  savePlanningEntry(id, e);
+  if (g_useFirebase) { renderPlanning(); renderAdminPlanning(); }
+}
+
+function setPlanningFilter(f) {
+  g_filterPlanning = f;
+  renderPlanning();
+}
+
+function planningSorted() {
+  var list = [];
+  for (var id in g_planning) {
+    if (g_planning.hasOwnProperty(id)) { var e = g_planning[id]; e._id = id; list.push(e); }
+  }
+  list.sort(function (a, b) { return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); });
+  return list;
+}
+
+function todayISO() {
+  var d = new Date();
+  function p(n) { return n < 10 ? "0" + n : String(n); }
+  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+}
+
+function stBadge(statut) {
+  var cls = statut === "Confirmé" ? "stConf" : (statut === "Terminé" ? "stTerm" : "stPlan");
+  return '<span class="stBadge ' + cls + '">' + esc(statut) + '</span>';
+}
+
+function planCard(e, isPast, adminActions) {
+  var parts = e.date.split("-");
+  var day = parts[2] || "";
+  var monIdx = parseInt(parts[1], 10) - 1;
+  var mon = (monIdx >= 0 && monIdx < 12) ? MOIS_FR[monIdx] : "";
+  var actions = '';
+  if (adminActions) {
+    actions = '<div class="docActions">' +
+      '<button class="btn btnGrey" onclick="editPlanning(\'' + e._id + '\')">✏</button>' +
+      '<button class="btn btnGrey" onclick="cyclePlanningStatut(\'' + e._id + '\')">↻</button>' +
+      '<button class="btn btnDanger" onclick="deletePlanning(\'' + e._id + '\')">🗑</button></div>';
+  }
+  return '<div class="planCard' + (isPast ? " past" : "") + '">' +
+    '<div class="planDate"><div class="d">' + esc(day) + '</div><div class="m">' + mon + ' ' + esc(parts[0].slice(2)) + '</div>' +
+    (e.heure ? '<div class="h">' + esc(e.heure) + '</div>' : '') + '</div>' +
+    '<div class="planBody"><div class="planTitle">' + esc(e.desc) + '</div>' +
+    '<div class="planMeta">' + (adminActions || g_isAdmin ? esc(e.client) + ' · ' : '') + esc(e.site || "") +
+    ' · ' + esc(e.metier || "") + '</div>' +
+    '<div style="margin-top:5px;">' + stBadge(e.statut || "Planifié") + '</div></div>' +
+    actions + '</div>';
+}
+
+function setPlanSiteFilter(s) {
+  g_filterPlanSite = s;
+  renderPlanning();
+}
+
+function renderPlanning() {
+  var chipsEl = document.getElementById("chipsPlanning");
+  if (!chipsEl) return;
+  var filters = [["avenir", "À venir"], ["passees", "Passées"], ["toutes", "Toutes"]];
+  var ch = "";
+  for (var i = 0; i < filters.length; i++) {
+    ch += '<span class="chip' + (g_filterPlanning === filters[i][0] ? " on" : "") + '" onclick="setPlanningFilter(\'' + filters[i][0] + '\')">' + filters[i][1] + '</span>';
+  }
+  chipsEl.innerHTML = ch;
+
+  var cli = activeClient();
+  var today = todayISO();
+  var list = planningSorted();
+
+  // puces sites (uniquement les sites du client actif)
+  var seenSites = {}, sites = [];
+  for (var s = 0; s < list.length; s++) {
+    var pe = list[s];
+    if (cli && pe.client !== cli) continue;
+    if (!g_isAdmin && pe.client !== g_client) continue;
+    var st = pe.site || "";
+    if (st && !seenSites[st]) { seenSites[st] = 1; sites.push(st); }
+  }
+  sites.sort();
+  if (g_filterPlanSite && !seenSites[g_filterPlanSite]) g_filterPlanSite = "";
+  var sh = "";
+  if (sites.length > 1) {
+    sh = '<span class="chip' + (g_filterPlanSite === "" ? " onCyan" : "") + '" onclick="setPlanSiteFilter(\'\')">Tous les sites</span>';
+    for (var t = 0; t < sites.length; t++) {
+      sh += '<span class="chip' + (g_filterPlanSite === sites[t] ? " onCyan" : "") + '" onclick="setPlanSiteFilter(\'' + esc(sites[t]) + '\')">' + esc(sites[t]) + '</span>';
+    }
+  }
+  document.getElementById("chipsPlanSite").innerHTML = sh;
+
+  var h = "";
+  var count = 0;
+  if (g_filterPlanning === "passees") list.reverse();
+  for (var j = 0; j < list.length; j++) {
+    var e = list[j];
+    if (cli && e.client !== cli) continue;
+    if (!g_isAdmin && e.client !== g_client) continue;
+    if (g_filterPlanSite && (e.site || "") !== g_filterPlanSite) continue;
+    var isPast = e.date < today;
+    if (g_filterPlanning === "avenir" && isPast) continue;
+    if (g_filterPlanning === "passees" && !isPast) continue;
+    h += planCard(e, isPast, false);
+    count++;
+  }
+  var out = "";
+  if (!g_isAdmin) {
+    var dl = demandesSorted();
+    var dh = "";
+    for (var q = 0; q < dl.length; q++) {
+      if (dl[q].client !== g_client) continue;
+      if ((dl[q].statut || "Nouvelle") === "Traitée") continue;
+      dh += demandeCard(dl[q], false);
+    }
+    if (dh) out += '<div class="grpHead">Vos demandes en cours</div>' + dh + '<div class="grpHead">Interventions</div>';
+  }
+  out += count ? h :
+    '<div class="empty" style="background:#fff;border-radius:12px;">Aucune intervention ' +
+    (g_filterPlanning === "avenir" ? "programmée" : "pour cette sélection") + '</div>';
+  document.getElementById("listPlanning").innerHTML = out;
+}
+
+function setAdminPlanPeriod(p) {
+  g_adminPlanPeriod = p;
+  renderAdminPlanning();
+}
+
+function renderAdminPlanning() {
+  var el = document.getElementById("adminPlanningList");
+  if (!el) return;
+  var filters = [["avenir", "À venir"], ["passees", "Passées"], ["toutes", "Toutes"]];
+  var ch = "";
+  for (var f = 0; f < filters.length; f++) {
+    ch += '<span class="chip' + (g_adminPlanPeriod === filters[f][0] ? " on" : "") + '" onclick="setAdminPlanPeriod(\'' + filters[f][0] + '\')">' + filters[f][1] + '</span>';
+  }
+  document.getElementById("chipsAdminPlan").innerHTML = ch;
+
+  var cli = document.getElementById("adminPlanClient").value;
+  var today = todayISO();
+  var list = planningSorted();
+  if (g_adminPlanPeriod === "passees") list.reverse();
+  var h = "";
+  var count = 0;
+  for (var i = 0; i < list.length; i++) {
+    var e = list[i];
+    if (cli && e.client !== cli) continue;
+    var isPast = e.date < today;
+    if (g_adminPlanPeriod === "avenir" && isPast) continue;
+    if (g_adminPlanPeriod === "passees" && !isPast) continue;
+    h += planCard(e, isPast, true);
+    count++;
+  }
+  el.innerHTML = count ? h : '<div class="empty" style="background:#fff;border-radius:12px;">Aucune intervention pour cette sélection</div>';
+}
+
+/* ===== EMAILJS ===== */
+function sendMail(toEmail, subject, message) {
+  if (EMAILJS_CONFIG.publicKey.indexOf("VOTRE") === 0 || !window.emailjs || !toEmail || toEmail.indexOf("VOTRE") === 0) return;
+  try {
+    emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateId, {
+      to_email: toEmail, subject: subject, message: message
+    });
+  } catch (e) {}
+}
+
+/* ===== VALIDATION DES DEVIS ===== */
+function valKey(r) {
+  if (!r.num) return "";
+  return "v_" + String(r.client + "_" + r.num).replace(/[^A-Za-z0-9]/g, "");
+}
+
+function validerDevis(key, decision, num, prest, montant) {
+  var lbl = decision === "valide" ? "VALIDER" : "REFUSER";
+  if (!confirm("Confirmer : " + lbl + " le devis " + num + " ?\n" + prest)) return;
+  var entry = { client: g_client, num: num, decision: decision, date: nowFR(), prest: prest, code: g_loginCode };
+  g_validations[key] = entry;
+  if (g_useFirebase) {
+    g_db.ref(DB_PATH + "/validations/" + key).set(entry, function (err) {
+      if (err) { showToast("❌ Erreur d'envoi"); return; }
+    });
+  } else persistLocal();
+  renderDashboard();
+  showToast(decision === "valide" ? "✅ Devis validé — A2DIS est informé" : "Réponse transmise à A2DIS");
+  sendMail(ADMIN_EMAIL, "Portail A2DIS — Devis " + num + " " + (decision === "valide" ? "VALIDÉ" : "REFUSÉ") + " par " + g_client,
+    g_client + " a " + (decision === "valide" ? "VALIDÉ" : "REFUSÉ") + " le devis " + num + " (" + prest + " — " + fmtEuro(montant) + ") le " + entry.date + ".");
+}
+
+function decisionCell(r) {
+  var key = valKey(r);
+  if (!key) return "<td>—</td>";
+  var v = g_validations[key];
+  if (v) {
+    return v.decision === "valide"
+      ? '<td><span class="decideOk">✅ Validé le ' + esc(v.date.split(" ")[0]) + '</span></td>'
+      : '<td><span class="decideKo">❌ Refusé le ' + esc(v.date.split(" ")[0]) + '</span></td>';
+  }
+  if (g_isAdmin) return '<td><span style="color:#bbb;font-size:11px;">En attente</span></td>';
+  return '<td style="white-space:nowrap;">' +
+    '<button class="btnMini btnValider" onclick="validerDevis(\'' + key + '\',\'valide\',\'' + esc(r.num) + '\',\'' + esc(r.prest).replace(/'/g, "\\'") + '\',' + r.ta + ')">✅ Valider</button> ' +
+    '<button class="btnMini btnRefuser" onclick="validerDevis(\'' + key + '\',\'refuse\',\'' + esc(r.num) + '\',\'' + esc(r.prest).replace(/'/g, "\\'") + '\',' + r.ta + ')">✕</button></td>';
+}
+
+/* ===== DEMANDES D'INTERVENTION ===== */
+function openDemande() {
+  document.getElementById("demandeModal").style.display = "block";
+}
+
+function closeDemande() {
+  document.getElementById("demandeModal").style.display = "none";
+  document.getElementById("demDesc").value = "";
+  document.getElementById("demSite").value = "";
+  document.getElementById("demPhotoZone").textContent = "📷 Ajouter une photo (optionnel)";
+  g_demPhoto = "";
+}
+
+function handleDemandePhoto(input) {
+  if (!(input.files && input.files[0])) return;
+  var file = input.files[0];
+  var reader = new FileReader();
+  reader.onload = function (e) {
+    var img = new Image();
+    img.onload = function () {
+      var maxW = 900;
+      var scale = img.width > maxW ? maxW / img.width : 1;
+      var canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      g_demPhoto = canvas.toDataURL("image/jpeg", 0.6);
+      document.getElementById("demPhotoZone").textContent = "📷 Photo ajoutée ✓";
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+  input.value = "";
+}
+
+function sendDemande() {
+  var desc = document.getElementById("demDesc").value.replace(/^\s+|\s+$/g, "");
+  var site = document.getElementById("demSite").value.replace(/^\s+|\s+$/g, "");
+  if (!desc) { showToast("❌ Décris ton besoin"); return; }
+  var id = "q" + new Date().getTime();
+  var entry = {
+    client: g_client, code: g_loginCode, site: site,
+    urgence: document.getElementById("demUrgence").value,
+    desc: desc, photo: g_demPhoto, date: nowFR(), statut: "Nouvelle"
+  };
+  if (g_useFirebase) {
+    g_db.ref(DB_PATH + "/demandes/" + id).set(entry, function (err) {
+      if (err) { showToast("❌ Erreur d'envoi"); return; }
+    });
+  } else { g_demandes[id] = entry; persistLocal(); renderPlanning(); }
+  closeDemande();
+  showToast("✅ Demande transmise à A2DIS");
+  sendMail(ADMIN_EMAIL, "Portail A2DIS — " + (entry.urgence === "Urgente" ? "🔴 DEMANDE URGENTE" : "Nouvelle demande") + " de " + g_client,
+    g_client + " (" + (site || "site non précisé") + ") — " + entry.urgence + " :\n" + desc + "\nDéposée le " + entry.date + ".");
+}
+
+function demandesSorted() {
+  var list = [];
+  for (var id in g_demandes) {
+    if (g_demandes.hasOwnProperty(id)) { var e = g_demandes[id]; e._id = id; list.push(e); }
+  }
+  list.sort(function (a, b) { return a._id < b._id ? 1 : -1; });
+  return list;
+}
+
+function demStatutBadge(st) {
+  if (st === "Traitée") return '<span class="stBadge stTerm">Traitée</span>';
+  if (st === "Prise en compte") return '<span class="stBadge stConf">Prise en compte</span>';
+  return '<span class="stBadge stNew">Nouvelle</span>';
+}
+
+function demandeCard(d, adminActions) {
+  var actions = "";
+  if (adminActions) {
+    actions = '<div class="docActions">' +
+      (d.photo ? '<button class="btn btnGrey" onclick="openDemandePhoto(\'' + d._id + '\')">📷</button>' : '') +
+      '<button class="btn btnGrey" onclick="cycleDemandeStatut(\'' + d._id + '\')">↻</button>' +
+      '<button class="btn btnDanger" onclick="deleteDemande(\'' + d._id + '\')">🗑</button></div>';
+  }
+  return '<div class="docCard">' +
+    '<div class="docIcon" style="background:#fbe3f0;">📥</div>' +
+    '<div class="docBody"><div class="docTitle">' + esc(d.desc) + '</div>' +
+    '<div class="docMeta">' + (adminActions ? esc(d.client) + ' · ' : '') + esc(d.site || "Site non précisé") + ' · ' + esc(d.date) +
+    (d.urgence === "Urgente" ? ' · <span class="stBadge stUrg">URGENT</span>' : '') + '</div>' +
+    '<div style="margin-top:5px;">' + demStatutBadge(d.statut || "Nouvelle") + '</div></div>' +
+    actions + '</div>';
+}
+
+function renderAdminDemandes() {
+  var el = document.getElementById("adminDemandesList");
+  if (!el) return;
+  var list = demandesSorted();
+  var h = "";
+  for (var i = 0; i < list.length; i++) h += demandeCard(list[i], true);
+  el.innerHTML = h || '<div class="empty" style="background:#fff;border-radius:12px;">Aucune demande reçue</div>';
+}
+
+function cycleDemandeStatut(id) {
+  var d = g_demandes[id];
+  if (!d) return;
+  var order = ["Nouvelle", "Prise en compte", "Traitée"];
+  var idx = 0;
+  for (var i = 0; i < order.length; i++) { if (order[i] === (d.statut || "Nouvelle")) { idx = i; break; } }
+  d.statut = order[(idx + 1) % order.length];
+  if (g_useFirebase) g_db.ref(DB_PATH + "/demandes/" + id + "/statut").set(d.statut);
+  else persistLocal();
+  renderAdminDemandes();
+  renderAdminChips();
+  renderPlanning();
+}
+
+function deleteDemande(id) {
+  if (!confirm("Supprimer cette demande ?")) return;
+  delete g_demandes[id];
+  if (g_useFirebase) g_db.ref(DB_PATH + "/demandes/" + id).remove();
+  else persistLocal();
+  renderAdminDemandes();
+  renderAdminChips();
+}
+
+function openDemandePhoto(id) {
+  var d = g_demandes[id];
+  if (d && d.photo) openBase64(d.photo, {});
+}
+
+/* ===== EMAILS CLIENTS ===== */
+function renderEmails() {
+  var el = document.getElementById("emailsList");
+  if (!el) return;
+  var clients = distinctClients();
+  var h = "";
+  for (var i = 0; i < clients.length; i++) {
+    h += '<div class="codeRow">' +
+      '<div class="cname" style="flex:1;min-width:110px;font-size:13px;font-weight:700;">' + esc(clients[i]) + '</div>' +
+      '<input type="email" data-client="' + esc(clients[i]) + '" value="' + esc(g_clientEmails[clients[i]] || "") + '" placeholder="email@client.fr" style="flex:2;min-width:170px;text-transform:none;letter-spacing:0;">' +
+      '</div>';
+  }
+  el.innerHTML = h;
+}
+
+function saveEmails() {
+  var inputs = document.getElementById("emailsList").getElementsByTagName("input");
+  var out = {};
+  for (var i = 0; i < inputs.length; i++) {
+    var v = inputs[i].value.replace(/\s/g, "");
+    if (v) out[inputs[i].getAttribute("data-client")] = v;
+  }
+  g_clientEmails = out;
+  persistMain();
+  showToast("✅ Emails enregistrés");
+}
+
+/* ===== UTILS ===== */
+function nowFR() {
+  var d = new Date();
+  function p(n) { return n < 10 ? "0" + n : String(n); }
+  return p(d.getDate()) + "/" + p(d.getMonth() + 1) + "/" + d.getFullYear() + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+}
+
+function esc(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+var g_toastTimer = null;
+function showToast(msg) {
+  var t = document.getElementById("toast");
+  t.textContent = msg;
+  t.style.display = "block";
+  if (g_toastTimer) clearTimeout(g_toastTimer);
+  g_toastTimer = setTimeout(function () { t.style.display = "none"; }, 3500);
+}
+
+document.getElementById("loginCode").addEventListener("keydown", function (e) {
+  if (e.keyCode === 13) doLogin();
+});
+
+setupDropZone();
+initApp();
+</script>
+</body>
+</html>
