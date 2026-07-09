@@ -72,6 +72,9 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
 .kpiBlue { border-top-color:#1BA9E0; } .kpiBlue .num { color:#1BA9E0; }
 .kpiAmber { border-top-color:#E8A020; } .kpiAmber .num { color:#E8A020; }
 .kpiViolet { border-top-color:#6E1E78; } .kpiViolet .num { color:#6E1E78; }
+.kpiCyanD { border-top-color:#1BA9E0; } .kpiCyanD .num { color:#1BA9E0; font-size:18px; padding-top:5px; }
+.kpiGreenD { border-top-color:#2E9E5B; } .kpiGreenD .num { color:#2E9E5B; font-size:18px; padding-top:5px; }
+.kpiPinkD { border-top-color:#D6248A; } .kpiPinkD .num { color:#D6248A; }
 
 .section { margin-bottom:22px; }
 .secHead { display:flex; align-items:center; gap:8px; padding:10px 14px; border-radius:10px 10px 0 0; color:#fff; font-size:12px; font-weight:800; letter-spacing:.5px; text-transform:uppercase; }
@@ -185,6 +188,7 @@ td.ref { color:#6E1E78; font-weight:700; white-space:nowrap; }
 
   <div class="nav">
     <button id="navDash" class="active" onclick="showTab('dash')">📊 Suivi</button>
+    <button id="navDemandes" onclick="showTab('demandes')">📥 Demandes</button>
     <button id="navPlanning" onclick="showTab('planning')">🗓 Planning</button>
     <button id="navDevis" onclick="showTab('devis')">📄 Devis</button>
     <button id="navRapports" onclick="showTab('rapports')">📁 Rapports</button>
@@ -233,6 +237,21 @@ td.ref { color:#6E1E78; font-weight:700; white-space:nowrap; }
       </div>
 
       <div class="majInfo" id="majInfo"></div>
+    </div>
+
+    <!-- ===== ONGLET DEMANDES ===== -->
+    <div id="tab-demandes" style="display:none;">
+      <div class="bandeau">
+        <h1>◈ DEMANDES D'INTERVENTION</h1>
+        <p id="demandesSub">Vos demandes et leur avancement</p>
+      </div>
+      <div class="kpis" id="demStats" style="display:none;">
+        <div class="kpi kpiCyanD"><div class="num" id="demStatPrise">—</div><div class="lab">Prise en compte (moy.)</div></div>
+        <div class="kpi kpiGreenD"><div class="num" id="demStatTraite">—</div><div class="lab">Traitement (moy.)</div></div>
+        <div class="kpi kpiPinkD"><div class="num" id="demStatNew">0</div><div class="lab">Nouvelles</div></div>
+      </div>
+      <div class="chips" id="chipsDemandes"></div>
+      <div id="listDemandes"></div>
     </div>
 
     <!-- ===== ONGLET PLANNING ===== -->
@@ -356,12 +375,6 @@ td.ref { color:#6E1E78; font-weight:700; white-space:nowrap; }
         <div id="adminPlanningList"></div>
       </div>
 
-      <div class="adminCard adminSec" id="adminSec-demandes" style="display:none;">
-        <h3>Demandes d'intervention reçues</h3>
-        <p>Demandes déposées par vos clients via le bouton ➕. Le bouton ↻ change le statut (Nouvelle → Prise en compte → Traitée).</p>
-        <div id="adminDemandesList"></div>
-      </div>
-
       <div class="adminCard adminSec" id="adminSec-annees" style="display:none;">
         <h3>Années disponibles</h3>
         <p>Années proposées dans les onglets Devis et Rapports.</p>
@@ -378,6 +391,12 @@ td.ref { color:#6E1E78; font-weight:700; white-space:nowrap; }
           <input type="text" id="adminCodeInput" placeholder="CODE ADMIN">
           <button class="btn btnCyan" onclick="saveAdminCode()">Modifier</button>
         </div>
+        <h3 style="margin-top:22px;">Email de notification admin</h3>
+        <p>Adresse qui reçoit les demandes d'intervention et les validations de devis (nécessite EmailJS configuré).</p>
+        <div class="codeRow" style="background:none;padding:0;">
+          <input type="email" id="adminEmailInput" placeholder="ton.email@a2dis.fr" style="text-transform:none;letter-spacing:0;flex:1;min-width:200px;">
+          <button class="btn btnCyan" onclick="saveAdminEmail()">💾 Enregistrer</button>
+        </div>
       </div>
 
     </div>
@@ -389,6 +408,27 @@ td.ref { color:#6E1E78; font-weight:700; white-space:nowrap; }
 
 <!-- BOUTON FLOTTANT DEMANDE (clients) -->
 <div id="fabDemande" onclick="openDemande()" style="display:none;position:fixed;bottom:22px;right:18px;width:58px;height:58px;border-radius:50%;background:#D6248A;color:#fff;font-size:26px;font-weight:900;text-align:center;line-height:58px;box-shadow:0 8px 24px rgba(214,36,138,.45);cursor:pointer;z-index:100;">＋</div>
+
+<!-- MODAL PLANIFICATION D'UNE DEMANDE (admin) -->
+<div id="planifModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(22,19,28,.75);z-index:200;padding:16px;overflow-y:auto;">
+  <div style="background:#fff;border-radius:16px;max-width:400px;margin:60px auto;padding:22px;">
+    <h3 style="color:#6E1E78;font-size:15px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">🗓 Planifier l'intervention</h3>
+    <p id="planifDesc" style="font-size:12px;color:#999;margin-bottom:14px;"></p>
+    <div class="formRow">
+      <input type="date" id="planifDate" style="flex:1;min-width:130px;padding:10px;border:2px solid #e5e0da;border-radius:8px;font-size:13px;background:#fff;outline:none;">
+      <input type="text" id="planifHeure" placeholder="Heure (ex : 14)" style="max-width:130px;">
+    </div>
+    <div class="formRow">
+      <select id="planifMetier"></select>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button class="btn btnViolet" style="flex:1;padding:13px;" onclick="confirmPlanif()">✅ Ajouter au planning</button>
+      <button class="btn btnGrey" style="padding:13px;" onclick="closePlanif()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="rapportFile" accept=".pdf,image/*" style="display:none;" onchange="handleRapportFile(this)">
 
 <!-- MODAL DEMANDE D'INTERVENTION -->
 <div id="demandeModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(22,19,28,.75);z-index:200;padding:16px;overflow-y:auto;">
@@ -477,6 +517,10 @@ var g_clientEmails = {};   // { nomClient : email }
 var g_loginCode = "";
 var g_listenersOn = false;
 var g_demPhoto = "";
+var g_adminEmail = "";        // email admin configurable (prioritaire sur ADMIN_EMAIL)
+var g_planifDemId = "";       // demande en cours de planification
+var g_attachPlanId = "";      // intervention en attente de rapport joint
+var g_filterDemandes = "encours";  // encours | traitees | toutes
 var g_db = null;
 var g_useFirebase = false;
 var g_data = INITIAL_DATA.slice();
@@ -530,6 +574,7 @@ function attachListeners() {
       g_updatedAt = v.updatedAt || "";
       g_years = v.years || DEFAULT_YEARS.slice();
       g_clientEmails = v.clientEmails || {};
+      g_adminEmail = v.adminEmail || "";
     }
     var first = !g_loaded;
     g_loaded = true;
@@ -551,8 +596,8 @@ function attachListeners() {
   g_db.ref(DB_PATH + "/demandes").on("value", function (snap) {
     g_demandes = snap.val() || {};
     if (document.getElementById("app").style.display === "block") {
-      renderPlanning();
-      if (g_isAdmin) { renderAdminChips(); renderAdminDemandes(); }
+      renderDemandesTab();
+      updateDemandesBadge();
     }
   });
 }
@@ -572,12 +617,13 @@ function loadLocal() {
       g_validations = v.validations || {};
       g_demandes = v.demandes || {};
       g_clientEmails = v.clientEmails || {};
+      g_adminEmail = v.adminEmail || "";
     }
   } catch (e) {}
 }
 
 function persistMain() {
-  var payload = { data: g_data, codes: g_codes, adminCode: g_adminCode, updatedAt: g_updatedAt, years: g_years, clientEmails: g_clientEmails };
+  var payload = { data: g_data, codes: g_codes, adminCode: g_adminCode, updatedAt: g_updatedAt, years: g_years, clientEmails: g_clientEmails, adminEmail: g_adminEmail };
   if (g_useFirebase) {
     g_db.ref(DB_PATH + "/main").set(payload, function (err) { if (err) showToast("❌ Erreur de synchronisation (droits ?)"); });
   }
@@ -588,7 +634,7 @@ function persistLocal() {
   try {
     localStorage.setItem("a2dis_portail_v2", JSON.stringify({
       data: g_data, codes: g_codes, adminCode: g_adminCode, updatedAt: g_updatedAt, docsMeta: g_docsMeta,
-      years: g_years, planning: g_planning, validations: g_validations, demandes: g_demandes, clientEmails: g_clientEmails
+      years: g_years, planning: g_planning, validations: g_validations, demandes: g_demandes, clientEmails: g_clientEmails, adminEmail: g_adminEmail
     }));
   } catch (e) {}
 }
@@ -655,8 +701,10 @@ function enterApp() {
     renderAdminDocs();
     fillPlanningSelects();
     renderAdminPlanning();
-    renderAdminDemandes();
+    document.getElementById("adminEmailInput").value = g_adminEmail;
   }
+  renderDemandesTab();
+  updateDemandesBadge();
 }
 
 function doLogout() {
@@ -674,19 +722,33 @@ function doLogout() {
 
 /* ===== NAV ===== */
 function showTab(name) {
-  var tabs = ["dash", "planning", "devis", "rapports", "admin"];
-  var navIds = { dash: "navDash", planning: "navPlanning", devis: "navDevis", rapports: "navRapports", admin: "navAdmin" };
+  var tabs = ["dash", "demandes", "planning", "devis", "rapports", "admin"];
+  var navIds = { dash: "navDash", demandes: "navDemandes", planning: "navPlanning", devis: "navDevis", rapports: "navRapports", admin: "navAdmin" };
   for (var i = 0; i < tabs.length; i++) {
     document.getElementById("tab-" + tabs[i]).style.display = (tabs[i] === name) ? "block" : "none";
     document.getElementById(navIds[tabs[i]]).className = (tabs[i] === name) ? "active" : "";
   }
   if (name === "admin") renderAdminChips();
+  if (name === "demandes") renderDemandesTab();
 }
 
 var ADMIN_SECTIONS = [
-  ["suivi", "📊 Suivi"], ["demandes", "📥 Demandes"], ["codes", "🔑 Identifiants"], ["docs", "📄 Documents"],
+  ["suivi", "📊 Suivi"], ["codes", "🔑 Identifiants"], ["docs", "📄 Documents"],
   ["planning", "🗓 Planning"], ["annees", "📅 Années"], ["code", "⚙ Code"]
 ];
+
+function renderAdminChips() {
+  var h = "";
+  for (var i = 0; i < ADMIN_SECTIONS.length; i++) {
+    h += '<span class="chip' + (g_adminSection === ADMIN_SECTIONS[i][0] ? " on" : "") +
+      '" onclick="showAdminSection(\'' + ADMIN_SECTIONS[i][0] + '\')">' + ADMIN_SECTIONS[i][1] + '</span>';
+  }
+  document.getElementById("chipsAdmin").innerHTML = h;
+  for (var j = 0; j < ADMIN_SECTIONS.length; j++) {
+    var el = document.getElementById("adminSec-" + ADMIN_SECTIONS[j][0]);
+    if (el) el.style.display = (ADMIN_SECTIONS[j][0] === g_adminSection) ? "block" : "none";
+  }
+}
 
 function countNewDemandes() {
   var n = 0;
@@ -696,22 +758,12 @@ function countNewDemandes() {
   return n;
 }
 
-function renderAdminChips() {
-  var h = "";
-  var nNew = countNewDemandes();
-  for (var i = 0; i < ADMIN_SECTIONS.length; i++) {
-    var lab = ADMIN_SECTIONS[i][1];
-    if (ADMIN_SECTIONS[i][0] === "demandes" && nNew > 0) lab += " (" + nNew + ")";
-    h += '<span class="chip' + (g_adminSection === ADMIN_SECTIONS[i][0] ? " on" : "") +
-      '" onclick="showAdminSection(\'' + ADMIN_SECTIONS[i][0] + '\')"' +
-      (ADMIN_SECTIONS[i][0] === "demandes" && nNew > 0 ? ' style="border-color:#D6248A;color:' + (g_adminSection === "demandes" ? '#fff' : '#D6248A') + ';"' : '') +
-      '>' + lab + '</span>';
-  }
-  document.getElementById("chipsAdmin").innerHTML = h;
-  for (var j = 0; j < ADMIN_SECTIONS.length; j++) {
-    var el = document.getElementById("adminSec-" + ADMIN_SECTIONS[j][0]);
-    if (el) el.style.display = (ADMIN_SECTIONS[j][0] === g_adminSection) ? "block" : "none";
-  }
+function updateDemandesBadge() {
+  var el = document.getElementById("navDemandes");
+  if (!el) return;
+  var n = g_isAdmin ? countNewDemandes() : 0;
+  el.innerHTML = "📥 Demandes" + (n > 0 ? " (" + n + ")" : "");
+  el.style.color = (n > 0 && el.className !== "active") ? "#D6248A" : "";
 }
 
 function showAdminSection(name) {
@@ -724,6 +776,8 @@ function renderAll() {
   renderDashboard();
   renderDocs();
   renderPlanning();
+  renderDemandesTab();
+  updateDemandesBadge();
   if (g_isAdmin) { renderCodes(); fillDocClientSelect(); renderAdminDocs(); fillPlanningSelects(); renderAdminPlanning(); }
 }
 
@@ -1321,6 +1375,7 @@ function addPlanning() {
   if (!date) { showToast("❌ Choisis une date"); return; }
   if (!desc) { showToast("❌ Décris l'intervention"); return; }
   var id = g_editingPlanId || ("p" + new Date().getTime());
+  var prev = g_planning[id] || {};
   var entry = {
     client: document.getElementById("planClient").value,
     date: date,
@@ -1328,7 +1383,9 @@ function addPlanning() {
     site: document.getElementById("planSite").value.replace(/^\s+|\s+$/g, ""),
     desc: desc,
     metier: document.getElementById("planMetier").value,
-    statut: document.getElementById("planStatut").value
+    statut: document.getElementById("planStatut").value,
+    demId: prev.demId || "",
+    rapportId: prev.rapportId || ""
   };
   var wasEditing = !!g_editingPlanId;
   savePlanningEntry(id, entry);
@@ -1423,17 +1480,19 @@ function planCard(e, isPast, adminActions) {
   var actions = '';
   if (adminActions) {
     actions = '<div class="docActions">' +
+      '<button class="btn btnGrey" onclick="attachRapport(\'' + e._id + '\')">📎</button>' +
       '<button class="btn btnGrey" onclick="editPlanning(\'' + e._id + '\')">✏</button>' +
       '<button class="btn btnGrey" onclick="cyclePlanningStatut(\'' + e._id + '\')">↻</button>' +
       '<button class="btn btnDanger" onclick="deletePlanning(\'' + e._id + '\')">🗑</button></div>';
   }
+  var rapBtn = e.rapportId ? '<button class="btnMini" style="background:#6E1E78;color:#fff;margin-left:6px;" onclick="openDoc(\'' + e.rapportId + '\')">📄 Rapport</button>' : '';
   return '<div class="planCard' + (isPast ? " past" : "") + '">' +
     '<div class="planDate"><div class="d">' + esc(day) + '</div><div class="m">' + mon + ' ' + esc(parts[0].slice(2)) + '</div>' +
     (e.heure ? '<div class="h">' + esc(e.heure) + '</div>' : '') + '</div>' +
     '<div class="planBody"><div class="planTitle">' + esc(e.desc) + '</div>' +
     '<div class="planMeta">' + (adminActions || g_isAdmin ? esc(e.client) + ' · ' : '') + esc(e.site || "") +
     ' · ' + esc(e.metier || "") + '</div>' +
-    '<div style="margin-top:5px;">' + stBadge(e.statut || "Planifié") + '</div></div>' +
+    '<div style="margin-top:5px;">' + stBadge(e.statut || "Planifié") + rapBtn + '</div></div>' +
     actions + '</div>';
 }
 
@@ -1491,16 +1550,6 @@ function renderPlanning() {
     count++;
   }
   var out = "";
-  if (!g_isAdmin) {
-    var dl = demandesSorted();
-    var dh = "";
-    for (var q = 0; q < dl.length; q++) {
-      if (dl[q].client !== g_client) continue;
-      if ((dl[q].statut || "Nouvelle") === "Traitée") continue;
-      dh += demandeCard(dl[q], false);
-    }
-    if (dh) out += '<div class="grpHead">Vos demandes en cours</div>' + dh + '<div class="grpHead">Interventions</div>';
-  }
   out += count ? h :
     '<div class="empty" style="background:#fff;border-radius:12px;">Aucune intervention ' +
     (g_filterPlanning === "avenir" ? "programmée" : "pour cette sélection") + '</div>';
@@ -1541,6 +1590,18 @@ function renderAdminPlanning() {
 }
 
 /* ===== EMAILJS ===== */
+function getAdminEmail() {
+  return g_adminEmail || ADMIN_EMAIL;
+}
+
+function saveAdminEmail() {
+  var v = document.getElementById("adminEmailInput").value.replace(/\s/g, "");
+  if (v && v.indexOf("@") < 0) { showToast("❌ Email invalide"); return; }
+  g_adminEmail = v;
+  persistMain();
+  showToast("✅ Email admin enregistré");
+}
+
 function sendMail(toEmail, subject, message) {
   if (EMAILJS_CONFIG.publicKey.indexOf("VOTRE") === 0 || !window.emailjs || !toEmail || toEmail.indexOf("VOTRE") === 0) return;
   try {
@@ -1568,7 +1629,7 @@ function validerDevis(key, decision, num, prest, montant) {
   } else persistLocal();
   renderDashboard();
   showToast(decision === "valide" ? "✅ Devis validé — A2DIS est informé" : "Réponse transmise à A2DIS");
-  sendMail(ADMIN_EMAIL, "Portail A2DIS — Devis " + num + " " + (decision === "valide" ? "VALIDÉ" : "REFUSÉ") + " par " + g_client,
+  sendMail(getAdminEmail(), "Portail A2DIS — Devis " + num + " " + (decision === "valide" ? "VALIDÉ" : "REFUSÉ") + " par " + g_client,
     g_client + " a " + (decision === "valide" ? "VALIDÉ" : "REFUSÉ") + " le devis " + num + " (" + prest + " — " + fmtEuro(montant) + ") le " + entry.date + ".");
 }
 
@@ -1630,16 +1691,16 @@ function sendDemande() {
   var entry = {
     client: g_client, code: g_loginCode, site: site,
     urgence: document.getElementById("demUrgence").value,
-    desc: desc, photo: g_demPhoto, date: nowFR(), statut: "Nouvelle"
+    desc: desc, photo: g_demPhoto, date: nowFR(), statut: "Nouvelle", ts: new Date().getTime()
   };
   if (g_useFirebase) {
     g_db.ref(DB_PATH + "/demandes/" + id).set(entry, function (err) {
       if (err) { showToast("❌ Erreur d'envoi"); return; }
     });
-  } else { g_demandes[id] = entry; persistLocal(); renderPlanning(); }
+  } else { g_demandes[id] = entry; persistLocal(); renderDemandesTab(); }
   closeDemande();
   showToast("✅ Demande transmise à A2DIS");
-  sendMail(ADMIN_EMAIL, "Portail A2DIS — " + (entry.urgence === "Urgente" ? "🔴 DEMANDE URGENTE" : "Nouvelle demande") + " de " + g_client,
+  sendMail(getAdminEmail(), "Portail A2DIS — " + (entry.urgence === "Urgente" ? "🔴 DEMANDE URGENTE" : "Nouvelle demande") + " de " + g_client,
     g_client + " (" + (site || "site non précisé") + ") — " + entry.urgence + " :\n" + desc + "\nDéposée le " + entry.date + ".");
 }
 
@@ -1662,26 +1723,100 @@ function demandeCard(d, adminActions) {
   var actions = "";
   if (adminActions) {
     actions = '<div class="docActions">' +
+      (!d.planId ? '<button class="btn btnViolet" onclick="planifierDemande(\'' + d._id + '\')">🗓 Planifier</button>' : '') +
       (d.photo ? '<button class="btn btnGrey" onclick="openDemandePhoto(\'' + d._id + '\')">📷</button>' : '') +
       '<button class="btn btnGrey" onclick="cycleDemandeStatut(\'' + d._id + '\')">↻</button>' +
       '<button class="btn btnDanger" onclick="deleteDemande(\'' + d._id + '\')">🗑</button></div>';
+  }
+  var planInfo = "";
+  if (d.planId && g_planning[d.planId]) {
+    var pe = g_planning[d.planId];
+    planInfo = ' · <span style="color:#6E1E78;font-weight:700;">🗓 Planifiée le ' + esc(frDate(pe.date)) + (pe.heure ? " " + esc(pe.heure) : "") + '</span>';
   }
   return '<div class="docCard">' +
     '<div class="docIcon" style="background:#fbe3f0;">📥</div>' +
     '<div class="docBody"><div class="docTitle">' + esc(d.desc) + '</div>' +
     '<div class="docMeta">' + (adminActions ? esc(d.client) + ' · ' : '') + esc(d.site || "Site non précisé") + ' · ' + esc(d.date) +
-    (d.urgence === "Urgente" ? ' · <span class="stBadge stUrg">URGENT</span>' : '') + '</div>' +
+    (d.urgence === "Urgente" ? ' · <span class="stBadge stUrg">URGENT</span>' : '') + planInfo + '</div>' +
     '<div style="margin-top:5px;">' + demStatutBadge(d.statut || "Nouvelle") + '</div></div>' +
     actions + '</div>';
 }
 
-function renderAdminDemandes() {
-  var el = document.getElementById("adminDemandesList");
+function frDate(iso) {
+  var p = String(iso || "").split("-");
+  return p.length === 3 ? p[2] + "/" + p[1] + "/" + p[0] : iso;
+}
+
+function setDemandesFilter(f) {
+  g_filterDemandes = f;
+  renderDemandesTab();
+}
+
+function renderDemandesTab() {
+  var el = document.getElementById("listDemandes");
   if (!el) return;
+
+  document.getElementById("demandesSub").textContent = g_isAdmin
+    ? "Demandes déposées par vos clients — 🗓 pour planifier, ↻ pour changer le statut"
+    : "Vos demandes et leur avancement — bouton ➕ pour une nouvelle demande";
+
+  var filters = [["encours", "En cours"], ["traitees", "Traitées"], ["toutes", "Toutes"]];
+  var ch = "";
+  for (var f = 0; f < filters.length; f++) {
+    ch += '<span class="chip' + (g_filterDemandes === filters[f][0] ? " on" : "") + '" onclick="setDemandesFilter(\'' + filters[f][0] + '\')">' + filters[f][1] + '</span>';
+  }
+  document.getElementById("chipsDemandes").innerHTML = ch;
+
   var list = demandesSorted();
   var h = "";
-  for (var i = 0; i < list.length; i++) h += demandeCard(list[i], true);
-  el.innerHTML = h || '<div class="empty" style="background:#fff;border-radius:12px;">Aucune demande reçue</div>';
+  var count = 0;
+  for (var i = 0; i < list.length; i++) {
+    var d = list[i];
+    if (!g_isAdmin && d.client !== g_client) continue;
+    var traitee = (d.statut || "Nouvelle") === "Traitée";
+    if (g_filterDemandes === "encours" && traitee) continue;
+    if (g_filterDemandes === "traitees" && !traitee) continue;
+    h += demandeCard(d, g_isAdmin);
+    count++;
+  }
+  el.innerHTML = count ? h : '<div class="empty" style="background:#fff;border-radius:12px;">Aucune demande pour cette sélection</div>';
+
+  renderDemandesStats();
+}
+
+function fmtDuree(ms) {
+  if (ms < 3600000) return Math.max(1, Math.round(ms / 60000)) + " min";
+  if (ms < 172800000) return Math.round(ms / 3600000) + " h";
+  return Math.round(ms / 86400000) + " j";
+}
+
+function renderDemandesStats() {
+  var box = document.getElementById("demStats");
+  if (!box) return;
+  if (!g_isAdmin) { box.style.display = "none"; return; }
+  box.style.display = "flex";
+  var sumP = 0, nP = 0, sumT = 0, nT = 0, nNew = 0;
+  for (var id in g_demandes) {
+    if (!g_demandes.hasOwnProperty(id)) continue;
+    var d = g_demandes[id];
+    if ((d.statut || "Nouvelle") === "Nouvelle") nNew++;
+    if (d.ts && d.tsPrise) { sumP += (d.tsPrise - d.ts); nP++; }
+    if (d.ts && d.tsTraitee) { sumT += (d.tsTraitee - d.ts); nT++; }
+  }
+  document.getElementById("demStatPrise").textContent = nP ? fmtDuree(sumP / nP) : "—";
+  document.getElementById("demStatTraite").textContent = nT ? fmtDuree(sumT / nT) : "—";
+  document.getElementById("demStatNew").textContent = nNew;
+}
+
+function saveDemande(id, d) {
+  var clean = {
+    client: d.client || "", code: d.code || "", site: d.site || "", urgence: d.urgence || "Normale",
+    desc: d.desc || "", photo: d.photo || "", date: d.date || "", statut: d.statut || "Nouvelle",
+    ts: d.ts || 0, tsPrise: d.tsPrise || 0, tsTraitee: d.tsTraitee || 0, planId: d.planId || ""
+  };
+  g_demandes[id] = clean;
+  if (g_useFirebase) g_db.ref(DB_PATH + "/demandes/" + id).set(clean);
+  else persistLocal();
 }
 
 function cycleDemandeStatut(id) {
@@ -1691,11 +1826,11 @@ function cycleDemandeStatut(id) {
   var idx = 0;
   for (var i = 0; i < order.length; i++) { if (order[i] === (d.statut || "Nouvelle")) { idx = i; break; } }
   d.statut = order[(idx + 1) % order.length];
-  if (g_useFirebase) g_db.ref(DB_PATH + "/demandes/" + id + "/statut").set(d.statut);
-  else persistLocal();
-  renderAdminDemandes();
-  renderAdminChips();
-  renderPlanning();
+  if (d.statut === "Prise en compte" && !d.tsPrise) d.tsPrise = new Date().getTime();
+  if (d.statut === "Traitée" && !d.tsTraitee) d.tsTraitee = new Date().getTime();
+  saveDemande(id, d);
+  renderDemandesTab();
+  updateDemandesBadge();
 }
 
 function deleteDemande(id) {
@@ -1703,13 +1838,122 @@ function deleteDemande(id) {
   delete g_demandes[id];
   if (g_useFirebase) g_db.ref(DB_PATH + "/demandes/" + id).remove();
   else persistLocal();
-  renderAdminDemandes();
-  renderAdminChips();
+  renderDemandesTab();
+  updateDemandesBadge();
 }
 
 function openDemandePhoto(id) {
   var d = g_demandes[id];
   if (d && d.photo) openBase64(d.photo, {});
+}
+
+/* ===== PLANIFICATION D'UNE DEMANDE ===== */
+function planifierDemande(id) {
+  var d = g_demandes[id];
+  if (!d) return;
+  g_planifDemId = id;
+  document.getElementById("planifDesc").textContent = d.client + " · " + (d.site || "site non précisé") + " — " + d.desc;
+  document.getElementById("planifDate").value = todayISO();
+  document.getElementById("planifHeure").value = "";
+  var mh = "";
+  for (var j = 0; j < METIERS.length; j++) mh += '<option value="' + esc(METIERS[j]) + '">' + esc(METIERS[j]) + '</option>';
+  document.getElementById("planifMetier").innerHTML = mh;
+  document.getElementById("planifMetier").value = "Divers";
+  document.getElementById("planifModal").style.display = "block";
+}
+
+function closePlanif() {
+  g_planifDemId = "";
+  document.getElementById("planifModal").style.display = "none";
+}
+
+function confirmPlanif() {
+  var d = g_demandes[g_planifDemId];
+  if (!d) { closePlanif(); return; }
+  var date = document.getElementById("planifDate").value;
+  if (!date) { showToast("❌ Choisis une date"); return; }
+  var planId = "p" + new Date().getTime();
+  var entry = {
+    client: d.client, date: date,
+    heure: normalizeHeure(document.getElementById("planifHeure").value),
+    site: d.site || "", desc: d.desc,
+    metier: document.getElementById("planifMetier").value,
+    statut: "Confirmé", demId: g_planifDemId
+  };
+  savePlanningEntry(planId, entry);
+  d.planId = planId;
+  if ((d.statut || "Nouvelle") === "Nouvelle") d.statut = "Prise en compte";
+  if (!d.tsPrise) d.tsPrise = new Date().getTime();
+  saveDemande(g_planifDemId, d);
+  closePlanif();
+  renderDemandesTab();
+  updateDemandesBadge();
+  if (g_useFirebase) { renderPlanning(); renderAdminPlanning(); }
+  showToast("✅ Intervention planifiée le " + frDate(date));
+  if (g_clientEmails[d.client]) {
+    sendMail(g_clientEmails[d.client], "A2DIS — Votre demande est planifiée",
+      "Bonjour,\nVotre demande « " + d.desc + " » est planifiée le " + frDate(date) +
+      (entry.heure ? " à " + entry.heure : "") + ".\nRetrouvez le détail sur votre portail A2DIS.");
+  }
+}
+
+/* ===== RAPPORT JOINT À UNE INTERVENTION ===== */
+function attachRapport(planId) {
+  g_attachPlanId = planId;
+  document.getElementById("rapportFile").click();
+}
+
+function handleRapportFile(input) {
+  if (!(input.files && input.files[0])) return;
+  var file = input.files[0];
+  var planId = g_attachPlanId;
+  var e = g_planning[planId];
+  input.value = "";
+  if (!e) return;
+  if (file.size > MAX_DOC_MB * 1024 * 1024) { showToast("❌ Fichier trop lourd (max " + MAX_DOC_MB + " Mo)"); return; }
+  var reader = new FileReader();
+  reader.onload = function (ev) {
+    var docId = "d" + new Date().getTime();
+    var meta = {
+      client: e.client, type: "rapport",
+      annee: String(e.date || "").slice(0, 4),
+      nature: "Dépannage", metier: e.metier || "Divers",
+      titre: "Rapport — " + e.desc, num: "",
+      date: nowFR(), name: file.name, size: file.size, planId: planId
+    };
+    function done() {
+      e.rapportId = docId;
+      savePlanningEntry(planId, e);
+      if (e.demId && g_demandes[e.demId]) {
+        var d = g_demandes[e.demId];
+        d.statut = "Traitée";
+        if (!d.tsTraitee) d.tsTraitee = new Date().getTime();
+        saveDemande(e.demId, d);
+      }
+      renderDemandesTab();
+      updateDemandesBadge();
+      if (!g_useFirebase) { renderDocs(); renderAdminDocs(); renderPlanning(); renderAdminPlanning(); }
+      showToast("✅ Rapport joint — visible dans l'onglet Rapports");
+      if (g_clientEmails[e.client]) {
+        sendMail(g_clientEmails[e.client], "A2DIS — Rapport d'intervention disponible",
+          "Bonjour,\nLe rapport de l'intervention « " + e.desc + " » est disponible sur votre portail A2DIS.");
+      }
+    }
+    if (g_useFirebase) {
+      g_db.ref(DB_PATH + "/docsFiles/" + docId).set(ev.target.result, function (err) {
+        if (err) { showToast("❌ Erreur d'envoi du fichier"); return; }
+        g_db.ref(DB_PATH + "/docsMeta/" + docId).set(meta, function () { done(); });
+      });
+    } else {
+      try {
+        localStorage.setItem("a2dis_doc_" + docId, ev.target.result);
+        g_docsMeta[docId] = meta;
+        persistLocal();
+        done();
+      } catch (er) { showToast("❌ Stockage local plein"); }
+    }
+  };
+  reader.readAsDataURL(file);
 }
 
 /* ===== EMAILS CLIENTS ===== */
